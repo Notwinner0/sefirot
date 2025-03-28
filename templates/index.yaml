@@ -1,0 +1,34 @@
+html:
+  tag: "html"
+  attrs:
+    lang: "en"
+  content:
+    - tag: "head"
+      content:
+        - tag: "meta"
+          attrs:
+            charset: "UTF-8"
+        - tag: "meta"
+          attrs:
+            name: "viewport"
+            content: "width=device-width, initial-scale=1.0"
+        - tag: "title"
+          content: "Hello World!"
+        - tag: "link"
+          attrs:
+            rel: "stylesheet"
+            href: "style.css"
+    - tag: "body"
+      content:
+        - tag: "div"
+          attrs:
+            data-alpine-load: true
+          content:
+            - tag: "h1"
+              content: "Hello World!"
+        - tag: "script"
+          attrs:
+            src: "https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+        - tag: "script"
+          attrs:
+            src: "main.js"
