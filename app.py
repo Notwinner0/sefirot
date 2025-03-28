@@ -44,10 +44,16 @@ def generate_html_from_yaml(yaml_file, css_file):
 """
 
 
+import os
+import subprocess
+import http.server
+import socketserver
+from watchdog.events import FileSystemEventHandler
+
 class FileChangeHandler(FileSystemEventHandler):
     def __init__(self):
         self.process = None
-        self.httpd = None # add httpd attribute
+        self.httpd = None  # add httpd attribute
 
     def on_modified(self, event):
         if event.is_directory:
@@ -59,8 +65,18 @@ class FileChangeHandler(FileSystemEventHandler):
             print(f"Обнаружены изменения в файле CSS: {filepath}. Копирование CSS...")
             os.makedirs(os.path.dirname(css_output_file), exist_ok=True)
             if os.path.exists(css_input_file):
-                subprocess.run(["cp", css_input_file, css_output_file])
-                print("CSS скопирован.")
+                try:
+                    if os.name == "nt":
+                        subprocess.run(["copy", css_input_file, css_output_file], check=True, shell=True)
+                    else:
+                        subprocess.run(["cp", css_input_file, css_output_file], check=True)
+                    print("CSS скопирован.")
+                except subprocess.CalledProcessError as e:
+                    print(f"Ошибка при копировании CSS: {e}")
+                    with open(css_output_file, "w") as f:
+                        f.write("/* Основные стили */\n")
+                    print(f"Создан пустой файл CSS: {css_output_file}")
+
             else:
                 with open(css_output_file, "w") as f:
                     f.write("/* Основные стили */\n")
@@ -82,16 +98,23 @@ class FileChangeHandler(FileSystemEventHandler):
         os.makedirs("output", exist_ok=True)
         # Copy CSS on start
         if os.path.exists(css_input_file):
-            if os.name == "nt":
-                subprocess.run(["copy", css_input_file, output_css_file], shell=True)
-            else:
-                subprocess.run(["cp", css_input_file, output_css_file])
-            print("CSS скопирован.")
+            try:
+                if os.name == "nt":
+                    subprocess.run(["copy", "/y", css_input_file.replace("/", "\\"), output_css_file.replace("/", "\\")], check=True, shell=True)
+                else:
+                    subprocess.run(["cp", css_input_file, output_css_file], check=True)
+                print("CSS скопирован.")
+            except subprocess.CalledProcessError as e:
+                print(f"Ошибка при копировании CSS: {e}")
+                with open(output_css_file, "w") as f:
+                    f.write("/* Styles */\n")
+                print(f"Создан пустой файл CSS: {output_css_file}")
         else:
             with open(output_css_file, "w") as f:
                 f.write("/* Styles */\n")  # Создаем пустой CSS, если его нет
             print(f"Создан пустой файл CSS: {output_css_file}")
 
+        # Assuming you have generate_html_from_yaml
         html_content = generate_html_from_yaml(template_file, output_css_file)
         with open(output_html_file, "w") as f:
             f.write(html_content)
@@ -111,8 +134,10 @@ class FileChangeHandler(FileSystemEventHandler):
         Handler.directory = "."
         self.httpd = socketserver.TCPServer(("", PORT), Handler)
         print(f"Сервер запущен на порту http://localhost:{PORT}")
-        self.httpd.serve_forever()
-        os.chdir("..")  # Возвращаемся в исходную директорию
+        try:
+            self.httpd.serve_forever()
+        finally:
+            os.chdir("..")  # Возвращаемся в исходную директорию
 
     def on_created(self, event):
         self.on_modified(event)
@@ -122,7 +147,6 @@ class FileChangeHandler(FileSystemEventHandler):
 
     def on_moved(self, event):
         self.on_modified(event)
-
 
 if __name__ == "__main__":
     event_handler = FileChangeHandler()
