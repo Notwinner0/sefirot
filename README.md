@@ -1,6 +1,11 @@
 # install
-	install -r requirements.txt
+
+    install -r requirements.txt
+
 # run
-	python app,py
+
+    python app.py
+
 # enjoy
-	localhost:8000
+
+    localhost:8000
