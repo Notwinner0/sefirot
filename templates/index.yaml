@@ -21,7 +21,7 @@ html:
         - tag: "script"
           attrs:
             type: "importmap"
-            content: {"imports": {"three": "https://cdn.jsdelivr.net/npm/three@<version>/build/three.module.js","three/addons/": "https://cdn.jsdelivr.net/npm/three@<version>/examples/jsm/"}}
+            content: {"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.175.0/build/three.module.js","three/addons/": "https://cdn.jsdelivr.net/npm/three@0.175.0/examples/jsm/"}}
     - tag: "body"
       content:
         - tag: "div"
