@@ -24,9 +24,9 @@ html:
           attrs:
             class: "container"
           content:
-            - tag: "p"
+            - tag: "div"
               attrs:
-                class: "fade-out"
+                class: "hello"
               content: "Hello World!"
         - tag: "script"
           attrs:
