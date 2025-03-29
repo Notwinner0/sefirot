@@ -35,12 +35,20 @@ def build_html_element(element):
 
 # Функция для чтения YAML и генерации HTML
 def generate_html_from_yaml(yaml_file, css_file):
+    imports = """ {
+                    "imports": {
+                      "three": "https://cdn.jsdelivr.net/npm/three@0.175.0/build/three.module.js",
+                      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.175.0/examples/jsm/"
+                    }
+                  }"""
     with open(yaml_file, "r") as f:
         data = yaml.safe_load(f)
 
     html_content = build_html_element(data.get("html", {}))
     return f"""<!DOCTYPE html>
-
+<script type="importmap">
+{imports}
+</script>
 {html_content}
 
 """

@@ -1,14 +1,35 @@
+html,
 body {
-    font-family: sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: #f0f0f0;
-    margin: 0;
+	margin: 0;
+	padding: 0;
+	background: #000;
+	color: #FFF;
+	font-family: sans-serif;
+	font-size: 16px;    
 }
 
-h1 {
-    color: #333;
-    font-size: 3em;
+.container {
+    position: fixed; /* Фиксированное позиционирование для текста поверх всего */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Центрирование по центру экрана */
+    z-index: 2; /* Устанавливаем z-index выше, чем у канваса */
+    text-align: center; /* Для старых браузеров, если flex не поддерживается */
+}
+
+.fade-out {
+    font-size: 2em; /* Необязательно: размер шрифта */
+    color: #FFF; /* Необязательно: цвет текста */
+    animation: fadeOut 5s ease-in-out infinite alternate; /* Запускаем анимацию */
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        color: red;
+    }
+    100% {
+        opacity: 0;
+        color: blue
+    }
 }
