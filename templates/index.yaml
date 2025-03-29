@@ -18,6 +18,10 @@ html:
           attrs:
             rel: "stylesheet"
             href: "style.css"
+        - tag: "script"
+          attrs:
+            type: "importmap"
+            content: {"imports": {"three": "https://cdn.jsdelivr.net/npm/three@<version>/build/three.module.js","three/addons/": "https://cdn.jsdelivr.net/npm/three@<version>/examples/jsm/"}}
     - tag: "body"
       content:
         - tag: "div"
@@ -26,6 +30,8 @@ html:
           content:
             - tag: "h1"
               content: "Hello World!"
+            - tag: "p"
+              content: "This is a paragraph."
         - tag: "script"
           attrs:
             src: "https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"

@@ -1,12 +1,12 @@
 import yaml
 import http.server
-import socketserver
+import socketserver  # type: ignore
 import os
-import time
+import time  # type: ignore
 import subprocess
-import sys
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+import sys  # type: ignore
+import webbrowser  # type: ignore
+from livereload import Server, shell
 
 
 # Рекурсивная функция для генерации HTML из YAML
@@ -40,126 +40,100 @@ def generate_html_from_yaml(yaml_file, css_file):
 
     html_content = build_html_element(data.get("html", {}))
     return f"""<!DOCTYPE html>
+
 {html_content}
+
 """
 
 
-import os
-import subprocess
-import http.server
-import socketserver
-from watchdog.events import FileSystemEventHandler
+def build_site():
+    css_input_file = "static/css/style.css"
+    yaml_input_file = "templates/index.yaml"
+    js_input_file = "static/js/main.js"
 
-class FileChangeHandler(FileSystemEventHandler):
-    def __init__(self):
-        self.process = None
-        self.httpd = None  # add httpd attribute
+    css_output_file = "output/style.css"
+    html_output_file = "output/index.html"
+    js_output_file = "output/main.js"
 
-    def on_modified(self, event):
-        if event.is_directory:
-            return
-        filepath = event.src_path
-        css_input_file = "static/css/style.css"
-        css_output_file = "output/style.css"
-        if filepath.endswith(".css"):
-            print(f"Обнаружены изменения в файле CSS: {filepath}. Копирование CSS...")
-            os.makedirs(os.path.dirname(css_output_file), exist_ok=True)
-            if os.path.exists(css_input_file):
-                try:
-                    if os.name == "nt":
-                        subprocess.run(["copy", css_input_file, css_output_file], check=True, shell=True)
-                    else:
-                        subprocess.run(["cp", css_input_file, css_output_file], check=True)
-                    print("CSS скопирован.")
-                except subprocess.CalledProcessError as e:
-                    print(f"Ошибка при копировании CSS: {e}")
-                    with open(css_output_file, "w") as f:
-                        f.write("/* Основные стили */\n")
-                    print(f"Создан пустой файл CSS: {css_output_file}")
+    os.makedirs("output", exist_ok=True)
 
-            else:
-                with open(css_output_file, "w") as f:
-                    f.write("/* Основные стили */\n")
-                print(f"Создан пустой файл CSS: {css_output_file}")
-        elif filepath.endswith((".py", ".yaml")):
-            print(f"Обнаружены изменения в файле: {filepath}. Перезапуск сервера...")
-            if self.httpd:
-                self.httpd.shutdown()
-                self.httpd.server_close()
-                self.httpd = None
-            self.start_server()
-
-    def start_server(self):
-        template_file = "templates/index.yaml"
-        css_input_file = "static/css/style.css"
-        output_css_file = "output/style.css"
-        output_html_file = "output/index.html"
-
-        os.makedirs("output", exist_ok=True)
-        # Copy CSS on start
-        if os.path.exists(css_input_file):
-            try:
-                if os.name == "nt":
-                    subprocess.run(["copy", "/y", css_input_file.replace("/", "\\"), output_css_file.replace("/", "\\")], check=True, shell=True)
-                else:
-                    subprocess.run(["cp", css_input_file, output_css_file], check=True)
-                print("CSS скопирован.")
-            except subprocess.CalledProcessError as e:
-                print(f"Ошибка при копировании CSS: {e}")
-                with open(output_css_file, "w") as f:
-                    f.write("/* Styles */\n")
-                print(f"Создан пустой файл CSS: {output_css_file}")
-        else:
-            with open(output_css_file, "w") as f:
-                f.write("/* Styles */\n")  # Создаем пустой CSS, если его нет
-            print(f"Создан пустой файл CSS: {output_css_file}")
-
-        # Assuming you have generate_html_from_yaml
-        html_content = generate_html_from_yaml(template_file, output_css_file)
-        with open(output_html_file, "w") as f:
-            f.write(html_content)
-
-        PORT = 8000
-        DIRECTORY = "output"
-
-        class Handler(http.server.SimpleHTTPRequestHandler):
-            def do_GET(self):
-                if self.path == "/":
-                    self.path = "/index.html"
-                return http.server.SimpleHTTPRequestHandler.do_GET(self)
-
-        os.chdir(DIRECTORY)
-        with open("main.js", "w") as f:
-            f.write("// Main JavaScript file\n")
-        Handler.directory = "."
-        self.httpd = socketserver.TCPServer(("", PORT), Handler)
-        print(f"Сервер запущен на порту http://localhost:{PORT}")
+    # Копирование CSS
+    if os.path.exists(css_input_file):
         try:
-            self.httpd.serve_forever()
-        finally:
-            os.chdir("..")  # Возвращаемся в исходную директорию
+            if os.name == "nt":
+                subprocess.run(
+                    [
+                        "copy",
+                        "/y",
+                        css_input_file.replace("/", "\\"),
+                        css_output_file.replace("/", "\\"),
+                    ],
+                    check=True,
+                    shell=True,
+                )
+            else:
+                subprocess.run(["cp", css_input_file, css_output_file], check=True)
+            print("CSS скопирован.")
+        except subprocess.CalledProcessError as e:
+            print(f"Ошибка при копировании CSS: {e}")
+            with open(css_output_file, "w") as f:
+                f.write("/* Styles */\n")
+            print(f"Создан пустой файл CSS: {css_output_file}")
+    else:
+        with open(css_output_file, "w") as f:
+            f.write("/* Styles */\n")
+        print(f"Создан пустой файл CSS: {css_output_file}")
 
-    def on_created(self, event):
-        self.on_modified(event)
+    # Копирование JS
+    if os.path.exists(js_input_file):
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    [
+                        "copy",
+                        "/y",
+                        js_input_file.replace("/", "\\"),
+                        js_output_file.replace("/", "\\"),
+                    ],
+                    check=True,
+                    shell=True,
+                )
+            else:
+                subprocess.run(["cp", js_input_file, js_output_file], check=True)
+            print("JS скопирован.")
+        except subprocess.CalledProcessError as e:
+            print(f"Ошибка при копировании JS: {e}")
+            with open(js_output_file, "w") as f:
+                f.write("// Main JavaScript file \n")
+            print(f"Создан пустой файл JS: {js_output_file}")
+    else:
+        with open(js_output_file, "w") as f:
+            f.write("// Main JavaScript file \n")
+        print(f"Создан пустой файл JS: {js_output_file}")
 
-    def on_deleted(self, event):
-        self.on_modified(event)
+    # Генерация HTML
+    try:
+        html_content = generate_html_from_yaml(yaml_input_file, css_output_file)
+        with open(html_output_file, "w") as f:
+            f.write(html_content)
+        print("HTML обновлён.")
+    except Exception as e:
+        print(f"Ошибка при обновлении HTML: {e}")
 
-    def on_moved(self, event):
-        self.on_modified(event)
 
 if __name__ == "__main__":
-    event_handler = FileChangeHandler()
-    event_handler.start_server()  # Copy CSS on start
-    observer = Observer()
-    observer.schedule(event_handler, ".", recursive=True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-    if event_handler.httpd:
-        event_handler.httpd.shutdown()
-        event_handler.httpd.server_close()
+    build_site()  # Первоначальная сборка HTML
+
+    server = Server()
+    server.watch(
+        "templates/*.yaml", build_site)
+    server.watch(
+        "static/css/*.css", build_site
+    )  # Пересобираем HTML при изменении CSS, чтобы скопировать его
+    server.watch(
+        "static/js/*.js", build_site)  # livereload сам отследит изменения в JS
+    server.watch(
+        "*.py", shell("python app.py")
+    )
+    
+    server.serve(root="output", port=8000, open_url_delay=1)
