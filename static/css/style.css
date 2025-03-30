@@ -1,11 +1,11 @@
 html,
 body {
-	margin: 0;
-	padding: 0;
-	background: #000;
-	color: #FFF;
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #FFF;
     font-family: Arial, sans-serif;
-	font-size: 14px;    
+    font-size: 14px;
 }
 
 .container {
@@ -21,7 +21,8 @@ body {
 
 .hello {
     font-size: 10vw;
-    z-index: 3; /* Устанавливаем z-index выше, чем у канваса */
+    z-index: 3;
+    /* Устанавливаем z-index выше, чем у канваса */
 }
 
 .score {
@@ -41,12 +42,13 @@ body {
     */
     -ms-user-select: none;
     user-select: none;
- }
+}
 
 @keyframes fadeOut {
     0% {
         opacity: 1;
     }
+
     100% {
         opacity: 0;
         display: none;
