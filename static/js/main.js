@@ -28,7 +28,8 @@ function initGameClicker(gameState) {
         if (currentScore >= 250) {
             gameState = 1;
             helloText.removeEventListener('click', gameClick)
-            changeGameState(gameState)
+            changeGameState(gameState);
+            container.style.animation = "fadeOut 25s linear forwards";
         }
         return gameState;
     }
@@ -79,6 +80,7 @@ function changeGameState(globalGameState) {
             initGameClicker(globalGameState);
             break;
         case 1:
+            offline()
             placeholding("stage 2")
             break;
         case 2:
@@ -86,7 +88,7 @@ function changeGameState(globalGameState) {
         default:
             offline()
             break;
-    }    
+    }
 }
 
 changeGameState(globalGameState)
