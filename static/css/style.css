@@ -52,3 +52,7 @@ body {
         display: none;
     }
 }
+
+*.unzoomable {
+    touch-action: manipulation;
+}

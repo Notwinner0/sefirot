@@ -26,7 +26,7 @@ html:
           content:
             - tag: "div"
               attrs:
-                class: "hello unselectable"
+                class: "hello unselectable unzoomable"
               content: "Hello World!"
         - tag: "script"
           attrs:
