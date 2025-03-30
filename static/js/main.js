@@ -30,3 +30,18 @@ function animate() {
     renderer.render(scene, camera);
 
 }
+
+let globalScore = 0; // Используем let вместо var для лучшего контроля области видимости
+const container = document.querySelector('.container');
+const helloWorld = document.querySelector('.hello');
+const score = document.createElement('div');
+score.classList.add('score');
+
+function clickerGame() {
+    globalScore += 1;
+    score.innerText = globalScore; // Обновляем текст score внутри функции
+}
+
+score.innerText = globalScore; // Инициализируем текст score при загрузке страницы
+helloWorld.addEventListener('click', clickerGame); // Передаем функцию clickerGame без вызова
+container.appendChild(score);
