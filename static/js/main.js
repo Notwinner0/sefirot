@@ -64,8 +64,8 @@ function initGameIdle() {
         }
 
         // Движение
-        x += dx * 0.999; // Короткая запись для x = x + dx
-        y += dy * 0.999;
+        x += dx; // Короткая запись для x = x + dx
+        y += dy;
 
         // Обновление стилей
         block.style.left = x + 'px';
