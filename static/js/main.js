@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 var globalGameState = 0
-var answer = 25
+var answer = 25 // game rebalancing seed
 
 function initGameClicker() {
     let score = 0;
@@ -145,11 +145,14 @@ function offline() {
 function initGameReate() {
     console.log("WIP")
 
-	const canvas = document.querySelector( '#c' );
-	const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
-    
+	// const canvas = document.querySelector( '#c' );
+	const renderer = new THREE.WebGLRenderer( { antialias: true} );
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
 	const fov = 75;
-	const aspect = 2; // the canvas default
+	const aspect = window.innerWidth / window.innerHeight
 	const near = 0.1;
 	const far = 5;
 	const camera = new THREE.PerspectiveCamera( fov, aspect, near, far );
