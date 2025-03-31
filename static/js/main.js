@@ -108,17 +108,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function resizeRendererToDisplaySize(renderer) {
-    const canvas = renderer.domElement;
-    const pixelRatio = window.devicePixelRatio;
-    const width  = Math.floor( canvas.clientWidth  * pixelRatio );
-    const height = Math.floor( canvas.clientHeight * pixelRatio );
-    const needResize = canvas.width !== width || canvas.height !== height;
-    if (needResize) {
-      renderer.setSize(width, height, false);
-    }
-    return needResize;
-}
 
 function offline() {
     const scene = new THREE.Scene();
@@ -155,10 +144,10 @@ function offline() {
 
 function initGameReate() {
     console.log("WIP")
-    
-	const canvas = renderer.domElement;
-	const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
 
+	const canvas = document.querySelector( '#c' );
+	const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
+    
 	const fov = 75;
 	const aspect = 2; // the canvas default
 	const near = 0.1;
