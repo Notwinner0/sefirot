@@ -108,6 +108,18 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function resizeRendererToDisplaySize(renderer) {
+    const canvas = renderer.domElement;
+    const pixelRatio = window.devicePixelRatio;
+    const width  = Math.floor( canvas.clientWidth  * pixelRatio );
+    const height = Math.floor( canvas.clientHeight * pixelRatio );
+    const needResize = canvas.width !== width || canvas.height !== height;
+    if (needResize) {
+      renderer.setSize(width, height, false);
+    }
+    return needResize;
+}
+
 function offline() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -141,6 +153,9 @@ function offline() {
     }
 }
 
+function initGameReate() {
+    console.log("WIP")
+}
 
 function placeholding(text) {
     console.log(text + " " + "Current time: " + Date.now())
@@ -157,6 +172,7 @@ function changeGameState(globalGameState) {
             placeholding("stage 2")
             break;
         case 2:
+            initGameReate();
             placeholding("stage 3")
             break;
         default:
