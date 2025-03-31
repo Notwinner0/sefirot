@@ -32,19 +32,16 @@ function initGameClicker() {
 }
 
 function initGameIdle() {
-
-    const block = document.querySelector('.hello');
     const helloText = document.querySelector('.hello');
+    const block = helloText
     const scoreDisplay = document.querySelector('.score');
 
     let score = 0;
 
-
-
     let x = 100;
     let y = 100;
-    let dx = 3; // Чуть быстрее
-    let dy = 3;
+    let dx = 1; // Чуть быстрее
+    let dy = 1;
 
     const blockWidth = block.offsetWidth;
     const blockHeight = block.offsetHeight;
@@ -82,6 +79,9 @@ function initGameIdle() {
             globalGameState = 2;
             helloText.removeEventListener('click', gameClick)
             changeGameState(globalGameState);
+            helloText.remove()
+            container.remove()
+            scoreDisplay.remove()
         }
         else {
             requestAnimationFrame(gameLoop);
