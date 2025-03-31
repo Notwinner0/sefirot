@@ -33,7 +33,7 @@ function initGameClicker() {
 
 function initGameIdle() {
     const helloText = document.querySelector('.hello');
-    const block = helloText
+    const block = helloText;
     const scoreDisplay = document.querySelector('.score');
 
     let score = 0;
@@ -57,17 +57,15 @@ function initGameIdle() {
         if (x + blockWidth > windowWidth || x < 0) {
             dx = -dx;
             score++
-            dx *= 1.001
         }
         if (y + blockHeight > windowHeight || y < 0) {
             dy = -dy;
             score++
-            dy *= 1.001
         }
 
         // Движение
-        x += dx; // Короткая запись для x = x + dx
-        y += dy;
+        x += dx * 0.999; // Короткая запись для x = x + dx
+        y += dy * 0.999;
 
         // Обновление стилей
         block.style.left = x + 'px';
