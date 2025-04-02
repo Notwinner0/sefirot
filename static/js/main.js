@@ -190,6 +190,14 @@ function initGameReate() {
         scene.add(light);
     }
 
+    // Adds ambient light to the scene
+	{
+		const color = 0xFFFFFF;
+		const intensity = 1;
+		const light = new THREE.AmbientLight(color, intensity);
+		scene.add(light);
+	}
+
     // Defines the dimensions of the box geometry
     const boxWidth = 1;
     const boxHeight = 1;
