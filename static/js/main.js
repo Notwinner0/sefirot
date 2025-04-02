@@ -232,7 +232,7 @@ function initGameReate() {
     }
 
     // Main render function
-    function render(time) {
+	function render(time) {
         time *= 0.001;
 
         // Rotates each cube based on time and its index
@@ -258,6 +258,9 @@ function initGameReate() {
     // We only want to render when the controls actually change, not on every frame if they haven't
     controls.addEventListener('change', () => renderer.render(scene, camera));
     controls.setCamera( camera );
+		controls.enablePan = false
+		controls.enableZoom = false
+		controls.setGizmosVisible(false)
 
     // Starts the render loop
     requestAnimationFrame(render);
