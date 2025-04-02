@@ -1,7 +1,10 @@
 import * as THREE from 'three';
+import { ArcballControls } from 'three/addons/controls/ArcballControls.js';
+
+let controls;
 
 let globalGameState = 0;
-const gameAnswer = 25; // Game rebalancing seed
+const gameAnswer = 5; // Game rebalancing seed
 
 function initGameClicker() {
 	let score = 0;
@@ -155,101 +158,101 @@ function offline() {
 }
 
 function initGameReate() {
-	console.log('WIP');
+    console.log('WIP');
 
-	// Creates a WebGLRenderer instance with anti-aliasing
-	const renderer = new THREE.WebGLRenderer({
-		antialias: true
-	});
-	// Sets the size of the renderer to match the window size
-	renderer.setSize(window.innerWidth, window.innerHeight);
-	// Appends the renderer's DOM element to the document body
-	document.body.appendChild(renderer.domElement);
+    // Creates a WebGLRenderer instance with anti-aliasing
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true
+    });
+    // Sets the size of the renderer to match the window size
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Appends the renderer's DOM element to the document body
+    document.body.appendChild(renderer.domElement);
 
-	// Sets up the camera perspective
-	const fov = 75;
-	const aspect = window.innerWidth / window.innerHeight;
-	const near = 0.1;
-	const far = 5;
-	const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	// Positions the camera 2 units back from the scene
-	camera.position.z = 2;
+    // Sets up the camera perspective
+    const fov = 75;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 5;
+    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+    // Positions the camera 2 units back from the scene
+    camera.position.z = 2;
 
-	// Creates a new scene
-	const scene = new THREE.Scene();
+    // Creates a new scene
+    const scene = new THREE.Scene();
 
-	// Adds a directional light to the scene
-	{
-		const color = 0xffffff;
-		const intensity = 3;
-		const light = new THREE.DirectionalLight(color, intensity);
-		light.position.set(-1, 2, 4);
-		scene.add(light);
-	}
+    // Adds a directional light to the scene
+    {
+        const color = 0xffffff;
+        const intensity = 3;
+        const light = new THREE.DirectionalLight(color, intensity);
+        light.position.set(-1, 2, 4);
+        scene.add(light);
+    }
 
-	// Defines the dimensions of the box geometry
-	const boxWidth = 1;
-	const boxHeight = 1;
-	const boxDepth = 1;
-	const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+    // Defines the dimensions of the box geometry
+    const boxWidth = 1;
+    const boxHeight = 1;
+    const boxDepth = 1;
+    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
-	// Function to create a new mesh instance with specified geometry, color, and position
-	function makeInstance(geometry, color, x) {
-		const material = new THREE.MeshPhongMaterial({
-			color
-		});
-		const cube = new THREE.Mesh(geometry, material);
-		scene.add(cube);
-		cube.position.x = x;
-		return cube;
-	}
+    // Function to create a new mesh instance with specified geometry, color, and position
+    function makeInstance(geometry, color, x) {
+        const material = new THREE.MeshPhongMaterial({
+            color
+        });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+        cube.position.x = x;
+        return cube;
+    }
 
-	// Creates one cube instance
-	const cubes = [
-		makeInstance(geometry, 0x44aa88, 0)
-	];
+    // Creates one cube instance
+    const cubes = [
+        makeInstance(geometry, 0x44aa88, 0)
+    ];
 
-	// Function to resize the renderer to match the window size
-	function resizeRendererToDisplaySize(renderer) {
-		const canvas = renderer.domElement;
-		const pixelRatio = window.devicePixelRatio;
-		const width = Math.floor(canvas.clientWidth * pixelRatio);
-		const height = Math.floor(canvas.clientHeight * pixelRatio);
-		const needResize = canvas.width !== width || canvas.height !== height;
-		if (needResize) {
-			renderer.setSize(width, height, false);
-		}
-		return needResize;
-	}
+    function onWindowResize() {
 
-	// Main render function
-	function render(time) {
-		time *= 0.001;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-		// Resizes the renderer if necessary
-		if (resizeRendererToDisplaySize(renderer)) {
-			const canvas = renderer.domElement;
-			camera.aspect = canvas.clientWidth / canvas.clientHeight;
-			camera.updateProjectionMatrix();
-		}
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
-		// Rotates each cube based on time and its index
-		cubes.forEach((cube, ndx) => {
-			const speed = 1 + ndx * 0.1;
-			const rot = time * speed;
-			cube.rotation.x = rot;
-			cube.rotation.y = rot;
-		});
+        // We don't need to call render here anymore, the animation loop will handle it
+        // render();
+    }
 
-		// Renders the scene
-		renderer.render(scene, camera);
+    // Main render function
+    function render(time) {
+        time *= 0.001;
 
-		// Requests the browser to call the render function again in the next animation frame
-		requestAnimationFrame(render);
-	}
+        // Rotates each cube based on time and its index
+        cubes.forEach((cube, ndx) => {
+            const speed = 1 + ndx * 0.1;
+            const rot = time * speed;
+            cube.rotation.x = rot;
+            cube.rotation.y = rot;
+        });
 
-	// Starts the render loop
-	requestAnimationFrame(render);
+        // Update controls in the render loop
+        controls.update();
+
+        // Renders the scene
+        renderer.render(scene, camera);
+
+        // Requests the browser to call the render function again in the next animation frame
+        requestAnimationFrame(render);
+    }
+
+    window.addEventListener( 'resize', onWindowResize );
+    const controls = new ArcballControls(camera, renderer.domElement, scene);
+    // We only want to render when the controls actually change, not on every frame if they haven't
+    controls.addEventListener('change', () => renderer.render(scene, camera));
+    controls.setCamera( camera );
+
+    // Starts the render loop
+    requestAnimationFrame(render);
 }
 
 function placeholding(text) {
