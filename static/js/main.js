@@ -162,117 +162,129 @@ function offline() {
 }
 
 function initGameReate() {
-    console.log('WIP');
+	console.log('WIP');
 
-    // Creates a WebGLRenderer instance with anti-aliasing
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 3;
-    renderer.domElement.style.background = 'radial-gradient(circle, rgba(173,181,189,1) 50%, rgba(33,37,41,1) 100%)';
+	// Creates a WebGLRenderer instance with anti-aliasing
+	const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.toneMapping = THREE.ReinhardToneMapping;
+	renderer.toneMappingExposure = 3;
+	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173,181,189,1) 50%, rgba(33,37,41,1) 100%)';
 	renderer.domElement.style.animation = 'fadeIn 25s linear forwards';
-    document.body.appendChild(renderer.domElement);
+	document.body.appendChild(renderer.domElement);
 
-    // Sets up the camera perspective
-    const fov = 75;
-    const aspect = window.innerWidth / window.innerHeight;
-    const near = 0.1;
-    const far = 5;
-    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    // Positions the camera 2 units back from the scene
-    camera.position.z = 2;
+	// Sets up the camera perspective
+	const fov = 75;
+	const aspect = window.innerWidth / window.innerHeight;
+	const near = 0.1;
+	const far = 5;
+	const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+	// Positions the camera 2 units back from the scene
+	camera.position.z = 2;
 
-    // Creates a new scene
-    const scene = new THREE.Scene();
+	// Creates a new scene
+	const scene = new THREE.Scene();
 
-    // Adds a directional light to the scene
-    let directionalLight; // Объявляем переменную для хранения ссылки на свет
-    {
-        const color = 0xffffff;
-        const intensity = 3;
-        directionalLight = new THREE.DirectionalLight(color, intensity); // Присваиваем ссылку
-        directionalLight.position.set(-1, 2, 4);
-        // Не добавляем свет напрямую в сцену на этом этапе
-    }
+	// Adds a directional light to the scene
+	let directionalLight; // Объявляем переменную для хранения ссылки на свет
+	{
+		const color = 0xffffff;
+		const intensity = 3;
+		directionalLight = new THREE.DirectionalLight(color, intensity); // Присваиваем ссылку
+		directionalLight.position.set(-1, 2, 4);
+		// Не добавляем свет напрямую в сцену на этом этапе
+	}
 
-    // Adds ambient light to the scene
-    {
-        const color = 0xFFFFFF;
-        const intensity = 1;
-        const ambientLight = new THREE.AmbientLight(color, intensity);
-        scene.add(ambientLight); // Окружающий свет обычно не привязывают к камере
-    }
+	// Adds ambient light to the scene
+	{
+		const color = 0xFFFFFF;
+		const intensity = 1;
+		const ambientLight = new THREE.AmbientLight(color, intensity);
+		scene.add(ambientLight); // Окружающий свет обычно не привязывают к камере
+	}
 
-    // Определяем размеры геометрии куба
-    const boxWidth = 1;
-    const boxHeight = 1;
-    const boxDepth = 1;
-    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+	// Определяем размеры геометрии куба
+	const boxWidth = 1;
+	const boxHeight = 1;
+	const boxDepth = 1;
+	const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
-    // Функция для создания нового экземпляра меша с указанной геометрией, цветом и позицией
-    function makeInstance(geometry, color, x) {
-        const material = new THREE.MeshPhongMaterial({
-            color
-        });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-        cube.position.x = x;
-        return cube;
-    }
+	// Функция для создания нового экземпляра меша с указанной геометрией, цветом и позицией
+	function makeInstance(geometry, color, x) {
+		const material = new THREE.MeshPhongMaterial({
+			color
+		});
+		const cube = new THREE.Mesh(geometry, material);
+		scene.add(cube);
+		cube.position.x = x;
+		return cube;
+	}
 
-    // Создаем один экземпляр куба
-    const cubes = [
-        makeInstance(geometry, 0x000000, 0)
-    ];
+	// Создаем один экземпляр куба
+	const cubes = [
+		makeInstance(geometry, 0x000000, 0)
+	];
 
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+	function onWindowResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
 
-    // Главная функция рендеринга
-    function render(time) {
-        time *= 0.001;
+	function randomizeRotation(cube) {
+		let rot = getRandomArbitrary(-90, 90);
+		cube.rotation.x = rot;
+		cube.rotation.y = rot;
+	}
 
-        // Вращаем куб (раскомментируйте, если хотите автоматическое вращение)
-        // cubes.forEach((cube, ndx) => {
-        //     const speed = 1 + ndx * 0.1;
-        //     const rot = time * speed;
-        //     cube.rotation.x = rot;
-        //     cube.rotation.y = rot;
-        // });
+	// Главная функция рендеринга
+	function render(time) {
+		time *= 0.001;
 
-        // Обновляем контроллеры в цикле рендеринга
-        controls.update();
+		// Вращаем куб (раскомментируйте, если хотите автоматическое вращение)
+		// cubes.forEach((cube, ndx) => {
+		//     const speed = 1 + ndx * 0.1;
+		//     const rot = time * speed * getRandomArbitrary(-1, 1);
+		//     cube.rotation.x = rot;
+		//     cube.rotation.y = rot;
+		// });
 
-        // Рендерим сцену
-        renderer.render(scene, camera);
+		// Обновляем контроллеры в цикле рендеринга
+		controls.update();
 
-        // Просим браузер вызвать функцию рендеринга снова на следующем кадре анимации
-        requestAnimationFrame(render);
-    }
+		// Рендерим сцену
+		renderer.render(scene, camera);
 
-    window.addEventListener('resize', onWindowResize);
-    const controls = new ArcballControls(camera, renderer.domElement, scene);
-    // Мы хотим рендерить только когда контроллеры действительно меняются, а не на каждом кадре, если они не менялись
-    controls.addEventListener('change', () => renderer.render(scene, camera));
-    controls.setCamera(camera);
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.setGizmosVisible(false);
+		// Просим браузер вызвать функцию рендеринга снова на следующем кадре анимации
+		requestAnimationFrame(render);
+	}
 
-    // Добавляем направленный свет к камере после инициализации камеры и света
-    camera.add(directionalLight);
-    scene.add(camera); // Важно добавить камеру в сцену, если вы этого еще не сделали явно
+	window.addEventListener('resize', onWindowResize);
+	const controls = new ArcballControls(camera, renderer.domElement, scene);
+	// Мы хотим рендерить только когда контроллеры действительно меняются, а не на каждом кадре, если они не менялись
+	controls.addEventListener('change', () => renderer.render(scene, camera));
+	controls.setCamera(camera);
+	controls.enablePan = false;
+	controls.enableZoom = false;
+	controls.setGizmosVisible(false);
 
-    // Запускаем цикл рендеринга
-    requestAnimationFrame(render);
+	// Добавляем направленный свет к камере после инициализации камеры и света
+	camera.add(directionalLight);
+	scene.add(camera); // Важно добавить камеру в сцену, если вы этого еще не сделали явно
+
+	randomizeRotation(cubes[0]);
+
+	// Запускаем цикл рендеринга
+	requestAnimationFrame(render);
 }
 
 function placeholding(text) {
 	console.log(`${text} Current time: ${Date.now()}`);
+}
+
+function getRandomArbitrary(min, max) {
+	return Math.random() * (max - min) + min;
 }
 
 function changeGameState(gameState) {
@@ -296,3 +308,10 @@ function changeGameState(gameState) {
 }
 
 changeGameState(globalGameState);
+
+const cheats = {
+	textAndTime: placeholding,
+	skipTo:changeGameState
+};
+  
+window.cheats = cheats;
