@@ -85,12 +85,16 @@ function initGameIdle() {
 			globalGameState = 2;
 			// Removes the click event listener from the helloText element
 			helloText.removeEventListener('click', idleGameClick);
-			// Changes the game state
-			changeGameState(globalGameState);
+
+			container.style.animation = 'fadeOut 25s linear forwards';
 			// Removes the helloText, container, and scoreDisplay elements from the DOM
-			helloText.remove();
-			container.remove();
-			scoreDisplay.remove();
+
+			sleep(25000).then(() => {
+				helloText.remove();
+				container.remove();
+				scoreDisplay.remove();
+				changeGameState(globalGameState); // Changes the game state
+			})
 		} else {
 			// Requests the browser to call the gameLoop function again in the next animation frame
 			requestAnimationFrame(gameLoop);
@@ -167,6 +171,7 @@ function initGameReate() {
     renderer.toneMapping = THREE.ReinhardToneMapping;
     renderer.toneMappingExposure = 3;
     renderer.domElement.style.background = 'radial-gradient(circle, rgba(173,181,189,1) 50%, rgba(33,37,41,1) 100%)';
+	renderer.domElement.style.animation = 'fadeIn 25s linear forwards';
     document.body.appendChild(renderer.domElement);
 
     // Sets up the camera perspective
