@@ -161,12 +161,12 @@ function initGameReate() {
     console.log('WIP');
 
     // Creates a WebGLRenderer instance with anti-aliasing
-	const renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
-	renderer.setPixelRatio( window.devicePixelRatio );
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	renderer.toneMapping = THREE.ReinhardToneMapping;
-	renderer.toneMappingExposure = 3;
-	renderer.domElement.style.background = 'linear-gradient( 180deg, rgba( 0,0,0,1 ) 0%, rgba( 128,128,255,1 ) 100% )';
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 3;
+    renderer.domElement.style.background = 'radial-gradient(circle, rgba(173,181,189,1) 50%, rgba(33,37,41,1) 100%)';
     document.body.appendChild(renderer.domElement);
 
     // Sets up the camera perspective
@@ -182,29 +182,30 @@ function initGameReate() {
     const scene = new THREE.Scene();
 
     // Adds a directional light to the scene
+    let directionalLight; // Объявляем переменную для хранения ссылки на свет
     {
         const color = 0xffffff;
         const intensity = 3;
-        const light = new THREE.DirectionalLight(color, intensity);
-        light.position.set(-1, 2, 4);
-        scene.add(light);
+        directionalLight = new THREE.DirectionalLight(color, intensity); // Присваиваем ссылку
+        directionalLight.position.set(-1, 2, 4);
+        // Не добавляем свет напрямую в сцену на этом этапе
     }
 
     // Adds ambient light to the scene
-	{
-		const color = 0xFFFFFF;
-		const intensity = 1;
-		const light = new THREE.AmbientLight(color, intensity);
-		scene.add(light);
-	}
+    {
+        const color = 0xFFFFFF;
+        const intensity = 1;
+        const ambientLight = new THREE.AmbientLight(color, intensity);
+        scene.add(ambientLight); // Окружающий свет обычно не привязывают к камере
+    }
 
-    // Defines the dimensions of the box geometry
+    // Определяем размеры геометрии куба
     const boxWidth = 1;
     const boxHeight = 1;
     const boxDepth = 1;
     const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
-    // Function to create a new mesh instance with specified geometry, color, and position
+    // Функция для создания нового экземпляра меша с указанной геометрией, цветом и позицией
     function makeInstance(geometry, color, x) {
         const material = new THREE.MeshPhongMaterial({
             color
@@ -215,27 +216,22 @@ function initGameReate() {
         return cube;
     }
 
-    // Creates one cube instance
+    // Создаем один экземпляр куба
     const cubes = [
         makeInstance(geometry, 0x000000, 0)
     ];
 
     function onWindowResize() {
-
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-
         renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // We don't need to call render here anymore, the animation loop will handle it
-        // render();
     }
 
-    // Main render function
-	function render(time) {
+    // Главная функция рендеринга
+    function render(time) {
         time *= 0.001;
 
-        // Rotates each cube based on time and its index
+        // Вращаем куб (раскомментируйте, если хотите автоматическое вращение)
         // cubes.forEach((cube, ndx) => {
         //     const speed = 1 + ndx * 0.1;
         //     const rot = time * speed;
@@ -243,26 +239,30 @@ function initGameReate() {
         //     cube.rotation.y = rot;
         // });
 
-        // Update controls in the render loop
+        // Обновляем контроллеры в цикле рендеринга
         controls.update();
 
-        // Renders the scene
+        // Рендерим сцену
         renderer.render(scene, camera);
 
-        // Requests the browser to call the render function again in the next animation frame
+        // Просим браузер вызвать функцию рендеринга снова на следующем кадре анимации
         requestAnimationFrame(render);
     }
 
-    window.addEventListener( 'resize', onWindowResize );
+    window.addEventListener('resize', onWindowResize);
     const controls = new ArcballControls(camera, renderer.domElement, scene);
-    // We only want to render when the controls actually change, not on every frame if they haven't
+    // Мы хотим рендерить только когда контроллеры действительно меняются, а не на каждом кадре, если они не менялись
     controls.addEventListener('change', () => renderer.render(scene, camera));
-    controls.setCamera( camera );
-	controls.enablePan = false
-	controls.enableZoom = false
-	controls.setGizmosVisible(false)
+    controls.setCamera(camera);
+    controls.enablePan = false;
+    controls.enableZoom = false;
+    controls.setGizmosVisible(false);
 
-    // Starts the render loop
+    // Добавляем направленный свет к камере после инициализации камеры и света
+    camera.add(directionalLight);
+    scene.add(camera); // Важно добавить камеру в сцену, если вы этого еще не сделали явно
+
+    // Запускаем цикл рендеринга
     requestAnimationFrame(render);
 }
 
