@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { ArcballControls } from 'three/addons/controls/ArcballControls.js';
 
-let controls;
-
 let globalGameState = 0;
 const gameAnswer = 5; // Game rebalancing seed
 
@@ -311,7 +309,7 @@ changeGameState(globalGameState);
 
 const cheats = {
 	textAndTime: placeholding,
-	skipTo:changeGameState
+	skipTo: changeGameState
 };
   
 window.cheats = cheats;
