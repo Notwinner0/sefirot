@@ -161,12 +161,12 @@ function initGameReate() {
     console.log('WIP');
 
     // Creates a WebGLRenderer instance with anti-aliasing
-    const renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
-    // Sets the size of the renderer to match the window size
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    // Appends the renderer's DOM element to the document body
+	const renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.toneMapping = THREE.ReinhardToneMapping;
+	renderer.toneMappingExposure = 3;
+	renderer.domElement.style.background = 'linear-gradient( 180deg, rgba( 0,0,0,1 ) 0%, rgba( 128,128,255,1 ) 100% )';
     document.body.appendChild(renderer.domElement);
 
     // Sets up the camera perspective
@@ -217,7 +217,7 @@ function initGameReate() {
 
     // Creates one cube instance
     const cubes = [
-        makeInstance(geometry, 0x44aa88, 0)
+        makeInstance(geometry, 0x000000, 0)
     ];
 
     function onWindowResize() {
@@ -236,12 +236,12 @@ function initGameReate() {
         time *= 0.001;
 
         // Rotates each cube based on time and its index
-        cubes.forEach((cube, ndx) => {
-            const speed = 1 + ndx * 0.1;
-            const rot = time * speed;
-            cube.rotation.x = rot;
-            cube.rotation.y = rot;
-        });
+        // cubes.forEach((cube, ndx) => {
+        //     const speed = 1 + ndx * 0.1;
+        //     const rot = time * speed;
+        //     cube.rotation.x = rot;
+        //     cube.rotation.y = rot;
+        // });
 
         // Update controls in the render loop
         controls.update();
@@ -258,9 +258,9 @@ function initGameReate() {
     // We only want to render when the controls actually change, not on every frame if they haven't
     controls.addEventListener('change', () => renderer.render(scene, camera));
     controls.setCamera( camera );
-		controls.enablePan = false
-		controls.enableZoom = false
-		controls.setGizmosVisible(false)
+	controls.enablePan = false
+	controls.enableZoom = false
+	controls.setGizmosVisible(false)
 
     // Starts the render loop
     requestAnimationFrame(render);

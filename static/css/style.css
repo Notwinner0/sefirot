@@ -24,6 +24,10 @@ body {
     z-index: 3;
     position: absolute; 
     /* Устанавливаем z-index выше, чем у канваса */
+    white-space: -moz-pre-wrap; /* Firefox */
+    white-space: -o-pre-wrap; /* Opera */
+    white-space: pre-wrap; /* Chrome */
+    word-wrap: break-word; /* IE */
 }
 
 .score {
