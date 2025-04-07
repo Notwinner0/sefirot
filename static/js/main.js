@@ -184,13 +184,12 @@ function initGameReate() {
 	const scene = new THREE.Scene();
 
 	// Adds a directional light to the scene
-	let directionalLight; // Объявляем переменную для хранения ссылки на свет
+	let directionalLight;
 	{
 		const color = 0xffffff;
 		const intensity = 3;
-		directionalLight = new THREE.DirectionalLight(color, intensity); // Присваиваем ссылку
+		directionalLight = new THREE.DirectionalLight(color, intensity);
 		directionalLight.position.set(-1, 2, 4);
-		// Не добавляем свет напрямую в сцену на этом этапе
 	}
 
 	// Adds ambient light to the scene
@@ -235,17 +234,12 @@ function initGameReate() {
 		cube.rotation.y = rot;
 	}
 
+	// Flag to track if the camera has already been randomized after entering the circle
+	let cameraRandomized = false;
+
 	// Главная функция рендеринга
 	function render(time) {
 		time *= 0.001;
-
-		// Вращаем куб (раскомментируйте, если хотите автоматическое вращение)
-		// cubes.forEach((cube, ndx) => {
-		//     const speed = 1 + ndx * 0.1;
-		//     const rot = time * speed * getRandomArbitrary(-1, 1);
-		//     cube.rotation.x = rot;
-		//     cube.rotation.y = rot;
-		// });
 
 		// Обновляем контроллеры в цикле рендеринга
 		controls.update();
@@ -259,15 +253,22 @@ function initGameReate() {
 
 	window.addEventListener('resize', onWindowResize);
 	const controls = new ArcballControls(camera, renderer.domElement, scene);
-	// Мы хотим рендерить только когда контроллеры действительно меняются, а не на каждом кадре, если они не менялись
-	controls.addEventListener('change', () => {
-		renderer.render(scene, camera)
-		console.log("Is the camera inside the circle?", isCameraInsideCircleLatLon(
+	controls.addEventListener('end', () => {
+		renderer.render(scene, camera);
+		const isInside = isCameraInsideCircleLatLon(
 			camera.position,
-			45,
-			15,
+			45, // TODO: randomize
+			15, // TODO: randomize
 			0.5
-		));
+		);
+		if (isInside && !cameraRandomized) {
+			console.log("Camera is inside the circle - randomizing position");
+			setCameraToRandomPositionOnSphere(camera);
+			cameraRandomized = true; // Set the flag to prevent further randomization
+		} else if (!isInside && cameraRandomized) {
+			// Reset the flag when the camera moves outside the circle
+			cameraRandomized = false;
+		}
 	});
 	controls.setCamera(camera);
 	controls.enablePan = false;
@@ -277,14 +278,13 @@ function initGameReate() {
 	// Добавляем направленный свет к камере после инициализации камеры и света
 	camera.add(directionalLight);
 	scene.add(ambientLight);
-	scene.add(camera); // Важно добавить камеру в сцену, если вы этого еще не сделали явно
+	scene.add(camera);
 
 	randomizeRotation(cubes[0]);
 
 	const container = document.querySelector('.container');
 	const scoreDisplay = document.querySelector('.score');
 	scoreDisplay.innerText = '0';
-	// document.body.appendChild(scoreDisplay);
 	container.style.animation = 'fadeIn 25s linear forwards';
 
 	if (window.innerWidth < window.innerHeight) {
@@ -356,6 +356,30 @@ function initGameReate() {
 
 		// Check if the angular distance is less than or equal to the circle radius
 		return angle <= circleRadius;
+	}
+
+	function setCameraToRandomPositionOnSphere(camera) {
+		// Radius of the sphere
+		const radius = 2;
+
+		// Generate random latitude between -90 and +90 degrees
+		const latitude = Math.random() * 180 - 90;
+
+		// Generate random longitude between -180 and +180 degrees
+		const longitude = Math.random() * 360 - 180;
+
+		// Convert latitude and longitude to radians
+		const latRad = degreesToRadians(latitude);
+		const lonRad = degreesToRadians(longitude);
+
+		const x = radius * Math.cos(latRad) * Math.cos(lonRad);
+		const y = radius * Math.cos(latRad) * Math.sin(lonRad);
+		const z = radius * Math.sin(latRad);
+
+		// Update the camera's position
+		camera.position.x = x;
+		camera.position.y = y;
+		camera.position.z = z;
 	}
 
 	console.log("Is the camera inside the circle?", isCameraInsideCircleLatLon(
