@@ -255,7 +255,10 @@ function initGameReate() {
 	const controls = new ArcballControls(camera, renderer.domElement, scene);
 	let currentCircleLatitude = 45; // Initialize with a default value
 	let currentCircleLongitude = 15; // Initialize with a default value
+
 	const circleRadius = 0.5;
+	
+	let s = 0;
 
 	controls.addEventListener('end', () => {
 		renderer.render(scene, camera);
@@ -285,6 +288,7 @@ function initGameReate() {
 			currentCircleLatitude = newLatitude;
 			currentCircleLongitude = newLongitude;
 			console.log("New circle center:", currentCircleLatitude, currentCircleLongitude);
+			scoreDisplay.innerText = s++;
 
 		} else if (!isInside && cameraRandomized) {
 			// Reset the flag when the camera moves outside the circle
