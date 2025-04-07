@@ -260,7 +260,15 @@ function initGameReate() {
 	window.addEventListener('resize', onWindowResize);
 	const controls = new ArcballControls(camera, renderer.domElement, scene);
 	// Мы хотим рендерить только когда контроллеры действительно меняются, а не на каждом кадре, если они не менялись
-	controls.addEventListener('change', () => renderer.render(scene, camera));
+	controls.addEventListener('change', () => {
+		renderer.render(scene, camera)
+		console.log("Is the camera inside the circle?", isCameraInsideCircleLatLon(
+			camera.position,
+			45,
+			15,
+			0.5
+		));
+	});
 	controls.setCamera(camera);
 	controls.enablePan = false;
 	controls.enableZoom = false;
@@ -285,6 +293,77 @@ function initGameReate() {
 	} else {
 		scoreDisplay.style.fontSize = '100vh';
 	}
+
+	function degreesToRadians(degrees) {
+		return degrees * Math.PI / 180;
+	}
+
+	function latLonToCartesian(latitude, longitude, radius) {
+		const latRad = degreesToRadians(latitude);
+		const lonRad = degreesToRadians(longitude);
+
+		const x = radius * Math.cos(latRad) * Math.cos(lonRad);
+		const y = radius * Math.cos(latRad) * Math.sin(lonRad);
+		const z = radius * Math.sin(latRad);
+
+		return { x: x, y: y, z: z };
+	}
+
+	function isCameraInsideCircleLatLon(cameraPosition, circleLatitude, circleLongitude, circleRadius) {
+		// Assuming:
+		// - cameraPosition: { x: number, y: number, z: number } - current camera coordinates
+		// - circleLatitude: number - latitude of the center of the circle in degrees
+		// - circleLongitude: number - longitude of the center of the circle in degrees
+		// - circleRadius: number - the angular radius of the circle in radians
+
+		// Convert latitude and longitude of the circle center to Cartesian coordinates
+		const circleCenter = latLonToCartesian(circleLatitude, circleLongitude, 2); // Radius of the sphere is 2
+
+		// Normalize the camera position vector
+		const cameraMagnitude = Math.sqrt(
+			cameraPosition.x * cameraPosition.x +
+			cameraPosition.y * cameraPosition.y +
+			cameraPosition.z * cameraPosition.z
+		);
+		const normalizedCamera = {
+			x: cameraPosition.x / cameraMagnitude,
+			y: cameraPosition.y / cameraMagnitude,
+			z: cameraPosition.z / cameraMagnitude,
+		};
+
+		// Normalize the circle center vector
+		const centerMagnitude = Math.sqrt(
+			circleCenter.x * circleCenter.x +
+			circleCenter.y * circleCenter.y +
+			circleCenter.z * circleCenter.z
+		);
+		const normalizedCenter = {
+			x: circleCenter.x / centerMagnitude,
+			y: circleCenter.y / centerMagnitude,
+			z: circleCenter.z / centerMagnitude,
+		};
+
+		// Calculate the dot product of the two normalized vectors
+		const dotProduct =
+			normalizedCamera.x * normalizedCenter.x +
+			normalizedCamera.y * normalizedCenter.y +
+			normalizedCamera.z * normalizedCenter.z;
+
+		// The dot product is equal to the cosine of the angle between the two vectors.
+		// Calculate the angle (angular distance) between the camera and the circle center.
+		// Ensure dotProduct is within [-1, 1] to avoid errors with Math.acos due to floating-point inaccuracies.
+		const angle = Math.acos(Math.min(Math.max(dotProduct, -1), 1));
+
+		// Check if the angular distance is less than or equal to the circle radius
+		return angle <= circleRadius;
+	}
+
+	console.log("Is the camera inside the circle?", isCameraInsideCircleLatLon(
+		camera.position,
+		45,
+		15,
+		0.5
+	));
 	// Запускаем цикл рендеринга
 	requestAnimationFrame(render);
 }
@@ -323,5 +402,5 @@ const cheats = {
 	textAndTime: placeholding,
 	skipTo: changeGameState
 };
-  
+
 window.cheats = cheats;
