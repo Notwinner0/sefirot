@@ -85,12 +85,11 @@ function initGameIdle() {
 			helloText.removeEventListener('click', idleGameClick);
 
 			container.style.animation = 'fadeOut 25s linear forwards';
-			// Removes the helloText, container, and scoreDisplay elements from the DOM
 
 			sleep(25000).then(() => {
 				helloText.remove();
-				container.remove();
-				scoreDisplay.remove();
+				// container.remove();
+				// scoreDisplay.remove();
 				changeGameState(globalGameState); // Changes the game state
 			})
 		} else {
@@ -168,7 +167,7 @@ function initGameReate() {
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	renderer.toneMapping = THREE.ReinhardToneMapping;
 	renderer.toneMappingExposure = 3;
-	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173,181,189,1) 50%, rgba(33,37,41,1) 100%)';
+	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173, 181, 189, 1) 50%, rgba(33, 37, 41, 1) 100%)';
 	renderer.domElement.style.animation = 'fadeIn 25s linear forwards';
 	document.body.appendChild(renderer.domElement);
 
@@ -195,11 +194,11 @@ function initGameReate() {
 	}
 
 	// Adds ambient light to the scene
+	let ambientLight;
 	{
-		const color = 0xFFFFFF;
-		const intensity = 1;
-		const ambientLight = new THREE.AmbientLight(color, intensity);
-		scene.add(ambientLight); // Окружающий свет обычно не привязывают к камере
+		const color = 0xffffff;
+		const intensity = 2;
+		ambientLight = new THREE.AmbientLight(color, intensity);
 	}
 
 	// Определяем размеры геометрии куба
@@ -269,9 +268,14 @@ function initGameReate() {
 
 	// Добавляем направленный свет к камере после инициализации камеры и света
 	camera.add(directionalLight);
+	scene.add(ambientLight);
 	scene.add(camera); // Важно добавить камеру в сцену, если вы этого еще не сделали явно
 
 	randomizeRotation(cubes[0]);
+
+	const scoreDisplay = document.querySelector('.score');
+	scoreDisplay.innerText = '0';
+	// document.body.appendChild(scoreDisplay);
 
 	// Запускаем цикл рендеринга
 	requestAnimationFrame(render);
