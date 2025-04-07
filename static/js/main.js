@@ -253,18 +253,39 @@ function initGameReate() {
 
 	window.addEventListener('resize', onWindowResize);
 	const controls = new ArcballControls(camera, renderer.domElement, scene);
+	let currentCircleLatitude = 45; // Initialize with a default value
+	let currentCircleLongitude = 15; // Initialize with a default value
+	const circleRadius = 0.5;
+
 	controls.addEventListener('end', () => {
 		renderer.render(scene, camera);
 		const isInside = isCameraInsideCircleLatLon(
 			camera.position,
-			45, // TODO: randomize
-			15, // TODO: randomize
-			0.5
+			currentCircleLatitude,
+			currentCircleLongitude,
+			circleRadius
 		);
 		if (isInside && !cameraRandomized) {
-			console.log("Camera is inside the circle - randomizing position");
+			console.log("Camera is inside the circle - randomizing position and circle");
 			setCameraToRandomPositionOnSphere(camera);
-			cameraRandomized = true; // Set the flag to prevent further randomization
+			cameraRandomized = true; // Set the flag
+
+			// Reroll the circle center until the camera is NOT inside it
+			let newLatitude, newLongitude;
+			do {
+				newLatitude = getRandomArbitrary(-90, 90);
+				newLongitude = getRandomArbitrary(-180, 180);
+			} while (isCameraInsideCircleLatLon(
+				camera.position,
+				newLatitude,
+				newLongitude,
+				circleRadius
+			));
+
+			currentCircleLatitude = newLatitude;
+			currentCircleLongitude = newLongitude;
+			console.log("New circle center:", currentCircleLatitude, currentCircleLongitude);
+
 		} else if (!isInside && cameraRandomized) {
 			// Reset the flag when the camera moves outside the circle
 			cameraRandomized = false;
