@@ -167,7 +167,7 @@ function initGameReate() {
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	renderer.toneMapping = THREE.ReinhardToneMapping;
 	renderer.toneMappingExposure = 3;
-	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173, 181, 189, 1) 50%, rgba(33, 37, 41, 1) 100%)';
+	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173, 181, 189, 0.5) 50%, rgba(33, 37, 41, 0.5) 100%)';
 	renderer.domElement.style.animation = 'fadeIn 25s linear forwards';
 	document.body.appendChild(renderer.domElement);
 
@@ -273,10 +273,18 @@ function initGameReate() {
 
 	randomizeRotation(cubes[0]);
 
+	const container = document.querySelector('.container');
 	const scoreDisplay = document.querySelector('.score');
 	scoreDisplay.innerText = '0';
 	// document.body.appendChild(scoreDisplay);
+	container.style.animation = 'fadeIn 25s linear forwards';
 
+	if (window.innerWidth < window.innerHeight) {
+		scoreDisplay.style.fontSize = '130vw';
+		scoreDisplay.style.rotate = '90deg';
+	} else {
+		scoreDisplay.style.fontSize = '100vh';
+	}
 	// Запускаем цикл рендеринга
 	requestAnimationFrame(render);
 }
