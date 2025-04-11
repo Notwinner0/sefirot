@@ -22,7 +22,7 @@ function initGameClicker() {
 			globalGameState = 1;
 			helloText.removeEventListener('click', gameClick);
 			changeGameState(globalGameState);
-			container.style.animation = 'fadeOut 25s linear forwards';
+			container.style.animation = 'fadeOut 5s linear forwards';
 			// Removed commented-out sleep logic
 		}
 	}
@@ -84,9 +84,9 @@ function initGameIdle() {
 			// Removes the click event listener from the helloText element
 			helloText.removeEventListener('click', idleGameClick);
 
-			container.style.animation = 'fadeOut 25s linear forwards';
+			container.style.animation = 'fadeOut 5s linear forwards';
 
-			sleep(25000).then(() => {
+			sleep(5000).then(() => {
 				helloText.remove();
 				// container.remove();
 				// scoreDisplay.remove();
@@ -110,11 +110,11 @@ function initGameIdle() {
 		// Displays the helloText element
 		helloText.style.display = 'block';
 		// Applies a fade-in animation to the container element
-		container.style.animation = 'fadeIn 25s linear forwards';
+		container.style.animation = 'fadeIn 5s linear forwards';
 	}
 
 	// Sleeps for 25 seconds and then rewinds the game
-	sleep(25000).then(() => {
+	sleep(5000).then(() => {
 		rewindGame();
 		// Adds the click event listener to the helloText element
 		helloText.addEventListener('click', idleGameClick);
@@ -168,7 +168,7 @@ function initGameReate() {
 	renderer.toneMapping = THREE.ReinhardToneMapping;
 	renderer.toneMappingExposure = 3;
 	renderer.domElement.style.background = 'radial-gradient(circle, rgba(173, 181, 189, 0.5) 50%, rgba(33, 37, 41, 0.5) 100%)';
-	renderer.domElement.style.animation = 'fadeIn 25s linear forwards';
+	renderer.domElement.style.animation = 'fadeIn 5s linear forwards';
 	document.body.appendChild(renderer.domElement);
 
 	// Sets up the camera perspective
@@ -310,7 +310,7 @@ function initGameReate() {
 	const container = document.querySelector('.container');
 	const scoreDisplay = document.querySelector('.score');
 	scoreDisplay.innerText = '0';
-	container.style.animation = 'fadeIn 25s linear forwards';
+	container.style.animation = 'fadeIn 5s linear forwards';
 
 	if (window.innerWidth < window.innerHeight) {
 		scoreDisplay.style.fontSize = '130vw';
