@@ -270,7 +270,13 @@ function initGameReate() {
 		);
 		if (isInside && !cameraRandomized) {
 			console.log("Camera is inside the circle - randomizing position and circle");
-			setCameraToRandomPositionOnSphere(camera);
+			s++
+			setCameraToLatLonPositionOnSphere(
+				getRandomArbitrary(-90, 90),
+				getRandomArbitrary(-180, 180),
+				camera
+				);
+			scoreDisplay.innerText = s;
 			cameraRandomized = true; // Set the flag
 
 			// Reroll the circle center until the camera is NOT inside it
@@ -288,8 +294,6 @@ function initGameReate() {
 			currentCircleLatitude = newLatitude;
 			currentCircleLongitude = newLongitude;
 			console.log("New circle center:", currentCircleLatitude, currentCircleLongitude);
-			scoreDisplay.innerText = s++;
-
 		} else if (!isInside && cameraRandomized) {
 			// Reset the flag when the camera moves outside the circle
 			cameraRandomized = false;
@@ -383,15 +387,9 @@ function initGameReate() {
 		return angle <= circleRadius;
 	}
 
-	function setCameraToRandomPositionOnSphere(camera) {
+	function setCameraToLatLonPositionOnSphere(latitude, longitude, camera) {
 		// Radius of the sphere
 		const radius = 2;
-
-		// Generate random latitude between -90 and +90 degrees
-		const latitude = Math.random() * 180 - 90;
-
-		// Generate random longitude between -180 and +180 degrees
-		const longitude = Math.random() * 360 - 180;
 
 		// Convert latitude and longitude to radians
 		const latRad = degreesToRadians(latitude);
@@ -447,9 +445,29 @@ function changeGameState(gameState) {
 
 changeGameState(globalGameState);
 
+// cheats
+
 const cheats = {
 	textAndTime: placeholding,
 	skipTo: changeGameState
 };
 
 window.cheats = cheats;
+
+// debug data display
+
+const dataDisplay = document.createElement('div');
+dataDisplay.classList.add('dataDisplay');
+document.body.appendChild(dataDisplay);
+dataDisplay.style.position = 'absolute';
+function updateDataDisplay() {
+	dataDisplay.innerHTML = `
+		<div>Game state: ${globalGameState}</div>
+		<div>Current time: ${Date.now()}</div>
+		<div>Game answer: ${gameAnswer}</div>
+	`;
+}
+while (true) {
+	updateDataDisplay();
+	await new Promise(resolve => setTimeout(resolve, 100));
+}
