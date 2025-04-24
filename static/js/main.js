@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { ArcballControls } from 'three/addons/controls/ArcballControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
 
 let globalGameState = 0;
 const gameAnswer = 5; // Game rebalancing seed
@@ -128,33 +133,221 @@ function sleep(ms) {
 }
 
 function offline() {
+    console.log('Initializing Offline Mode with effects');
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setAnimationLoop(animate);
     document.body.appendChild(renderer.domElement);
 
+    // --- Post-processing setup ---
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    // Bloom pass for glowing effects
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = 0.1; // Minimum brightness for bloom
+    bloomPass.strength = 1.5; // Intensity of the bloom
+    bloomPass.radius = 0; // Radius of the bloom effect
+    composer.addPass(bloomPass);
+
+    // Output pass to handle color space conversions
+    const outputPass = new OutputPass();
+    composer.addPass(outputPass);
+    // --- End Post-processing setup ---
+
+
+    // --- Lighting for bloom effects ---
+    const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 5, 5).normalize();
+    scene.add(directionalLight);
+    // --- End Lighting ---
+
+
+    // --- Cube setup (can be made emissive) ---
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({
+    // Using a material that responds to light and can be emissive
+    const material = new THREE.MeshStandardMaterial({
         color: 0x00ff00,
+        emissive: 0x00ff00, // Make the cube emit light (glow)
+        emissiveIntensity: 1 // How strong the emission is
     });
     const cube = new THREE.Mesh(geometry, material);
     scene.add(cube);
 
+    // Variables for cube color animation
+    // FIX: Initialize cubeHue to the HSL hue for green (approx 1/3)
+    let cubeHue = 1/3; // Start with green (hue 0 is red, 1/3 is green, 2/3 is blue)
+    let cubeHueSpeed = 0.001; // Initial speed of hue change
+    const cubeHueAcceleration = 0.001; // How fast the speed increases
+    // --- End Cube setup ---
+
+
+    // --- Particle System for Fireworks ---
+    const particleCount = 1000;
+    const particles = new THREE.BufferGeometry();
+    const pMaterial = new THREE.PointsMaterial({
+        color: 0xffffff, // Base color, will be overridden by vertex colors
+        size: 0.1,
+        blending: THREE.AdditiveBlending, // Make particles brighter when overlapping
+        transparent: true,
+        opacity: 0.8,
+        map: createParticleTexture(), // Use a simple white circle texture
+        depthWrite: false, // Avoid depth issues with transparent particles
+        vertexColors: true // Enable vertex colors to use individual particle colors
+    });
+
+    const pPositions = new Float32Array(particleCount * 3);
+    const pColors = new Float32Array(particleCount * 3);
+    const pVelocities = new Float32Array(particleCount * 3);
+    const pLifespans = new Float32Array(particleCount);
+
+    let color = new THREE.Color();
+
+    for (let i = 0; i < particleCount; i++) {
+        // Initial position (start from center)
+        pPositions[i * 3] = 0;
+        pPositions[i * 3 + 1] = 0;
+        pPositions[i * 3 + 2] = 0;
+
+        // Random velocity for explosion effect
+        pVelocities[i * 3] = (Math.random() - 0.5) * 5;
+        pVelocities[i * 3 + 1] = (Math.random() - 0.5) * 5;
+        pVelocities[i * 3 + 2] = (Math.random() - 0.5) * 5;
+
+        // Random color across the whole HUE spectrum
+        color.setHSL(Math.random(), 1.0, 0.5);
+        pColors[i * 3] = color.r;
+        pColors[i * 3 + 1] = color.g;
+        pColors[i * 3 + 2] = color.b;
+
+        // Random lifespan
+        pLifespans[i] = Math.random() * 2 + 1; // Lifespan between 1 and 3 seconds
+    }
+
+    particles.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+    particles.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+    particles.setAttribute('velocity', new THREE.BufferAttribute(pVelocities, 3));
+    particles.setAttribute('lifespan', new THREE.BufferAttribute(pLifespans, 1)); // Store lifespan
+
+    const particleSystem = new THREE.Points(particles, pMaterial);
+    scene.add(particleSystem);
+
+    // Function to create a simple white circle texture for particles
+    function createParticleTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const context = canvas.getContext('2d');
+        const gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        return new THREE.CanvasTexture(canvas);
+    }
+    // --- End Particle System ---
+
+
     camera.position.z = 5;
 
-    let speed = -0.001;
+    let speed = -0.001; // Original cube rotation speed
+    const clock = new THREE.Clock(); // Clock for time-based particle updates
 
     function animate() {
+        const delta = clock.getDelta(); // Time elapsed since last frame
+
+        // --- Cube animation (original) ---
         cube.rotation.x += speed;
         cube.scale.z += speed / 5;
         speed += 0.00001;
-
         cube.rotation.y += 0.05;
+        // --- End Cube animation ---
 
-        renderer.render(scene, camera);
+        // --- Cube color animation ---
+        cubeHue += cubeHueSpeed * delta; // Increase hue based on speed and time delta
+        if (cubeHue > 1) {
+            cubeHue -= 1; // Wrap hue around if it exceeds 1
+        }
+        cubeHueSpeed += cubeHueAcceleration * delta; // Increase hue change speed over time
+
+        // Update cube material color and emissive color
+        const newCubeColor = new THREE.Color().setHSL(cubeHue, 1.0, 0.5);
+        cube.material.color.copy(newCubeColor);
+        cube.material.emissive.copy(newCubeColor);
+        // --- End Cube color animation ---
+
+
+        // --- Particle system update ---
+        const positions = particles.attributes.position.array;
+        const velocities = particles.attributes.velocity.array;
+        const lifespans = particles.attributes.lifespan.array;
+
+        for (let i = 0; i < particleCount; i++) {
+            // Update position based on velocity
+            positions[i * 3] += velocities[i * 3] * delta;
+            positions[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+            positions[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+
+            // Apply gravity (simple downward acceleration)
+            velocities[i * 3 + 1] -= 1 * delta; // Adjust gravity strength as needed
+
+            // Decrease lifespan
+            lifespans[i] -= delta;
+
+            // If lifespan is zero or less, reset the particle
+            if (lifespans[i] <= 0) {
+                // Reset position to origin (for a continuous explosion effect)
+                positions[i * 3] = 0;
+                positions[i * 3 + 1] = 0;
+                positions[i * 3 + 2] = 0;
+
+                // Randomize new velocity
+                velocities[i * 3] = (Math.random() - 0.5) * 5;
+                velocities[i * 3 + 1] = (Math.random() - 0.5) * 5;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 5;
+
+                // Randomize new lifespan
+                lifespans[i] = Math.random() * 2 + 1;
+
+                // Randomize new color for the particle
+                color.setHSL(Math.random(), 1.0, 0.5);
+                particles.attributes.color.array[i * 3] = color.r;
+                particles.attributes.color.array[i * 3 + 1] = color.g;
+                particles.attributes.color.array[i * 3 + 2] = color.b;
+            }
+        }
+
+        // Mark attributes as needing update
+        particles.attributes.position.needsUpdate = true;
+        particles.attributes.color.needsUpdate = true; // Need to update colors when particles reset
+        // particles.attributes.velocity.needsUpdate = true; // Only needed if velocities are directly changed outside the loop
+        particles.attributes.lifespan.needsUpdate = true;
+
+        // --- End Particle system update ---
+
+
+        // Render the scene with post-processing
+        composer.render();
+    }
+
+    renderer.setAnimationLoop(animate);
+
+    // Handle window resize for renderer and composer
+    window.addEventListener('resize', onWindowResize);
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight); // Resize composer as well
+        bloomPass.setSize(window.innerWidth, window.innerHeight); // Resize bloom pass as well
     }
 }
 
