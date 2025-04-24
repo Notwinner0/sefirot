@@ -159,7 +159,7 @@ function offline() {
 }
 
 function initGameReate() {
-	console.log('WIP');
+	console.log('Initializing Game Stage 3 (Reate)');
 
 	// Creates a WebGLRenderer instance with anti-aliasing
 	const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -175,9 +175,9 @@ function initGameReate() {
 	const fov = 75;
 	const aspect = window.innerWidth / window.innerHeight;
 	const near = 0.1;
-	const far = 5;
+	const far = 5; // Camera stays relatively close to the origin/cube
 	const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	// Positions the camera 2 units back from the scene
+	// Positions the camera 2 units back from the scene center
 	camera.position.z = 2;
 
 	// Creates a new scene
@@ -206,21 +206,35 @@ function initGameReate() {
 	const boxDepth = 1;
 	const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
-	// Функция для создания нового экземпляра меша с указанной геометрией, цветом и позицией
-	function makeInstance(geometry, color, x) {
+	// Declare array to store positions of spawned cubes and the minimum spawn distance
+	const spawnedCubePositions = [];
+	const spawnRadius = 0.08; // Minimum distance between spawned cubes (smaller for denser trail)
+
+	// Variable to hold the target marker cube
+	let targetMarkerCube = null;
+	const targetMarkerSize = 1.2; // Scale factor for the target marker cube
+
+	// Raycaster for detecting intersection with the cube
+	const raycaster = new THREE.Raycaster();
+
+	// Function to create a new mesh instance
+	// Modified to accept x, y, z coordinates and optional scale
+	function makeInstance(geometry, color, x, y, z, scale = 1) {
 		const material = new THREE.MeshPhongMaterial({
 			color
 		});
 		const cube = new THREE.Mesh(geometry, material);
 		scene.add(cube);
-		cube.position.x = x;
+		cube.position.set(x, y, z); // Set position using set method
+		cube.scale.set(scale, scale, scale); // Set scale
 		return cube;
 	}
 
-	// Создаем один экземпляр куба
+	// Creates the main black cube
 	const cubes = [
-		makeInstance(geometry, 0x000000, 0)
+		makeInstance(geometry, 0x000000, 0, 0, 0) // Initial black cube at the origin
 	];
+	// spawnedCubePositions.push(cubes[0].position.clone()); // Do not add the main cube to spawned positions
 
 	function onWindowResize() {
 		camera.aspect = window.innerWidth / window.innerHeight;
@@ -229,15 +243,61 @@ function initGameReate() {
 	}
 
 	function randomizeRotation(cube) {
-		let rot = getRandomArbitrary(-90, 90);
-		cube.rotation.x = rot;
-		cube.rotation.y = rot;
+		// Removed this as ArcballControls handles camera rotation, not cube rotation
+		// Let's maybe randomize the cube's initial orientation slightly?
+		// cube.rotation.x = degreesToRadians(getRandomArbitrary(-30, 30));
+		// cube.rotation.y = degreesToRadians(getRandomArbitrary(-30, 30));
 	}
+
+
+	// Function to update or create the target marker cube
+	function updateTargetMarker(targetLatitude, targetLongitude) {
+		// Calculate the spherical target point on a sphere of radius 2 (same as camera distance)
+		const sphericalTargetPoint = latLonToCartesian(targetLatitude, targetLongitude, 2);
+
+		// Create a ray from the origin towards the spherical target point
+		const originRaycaster = new THREE.Raycaster(new THREE.Vector3(0, 0, 0), sphericalTargetPoint.normalize());
+
+		// Find intersections with the main black cube
+		const intersects = originRaycaster.intersectObjects(cubes); // Intersect with the main cube
+
+		if (intersects.length > 0) {
+			// The first intersection point is on the surface of the cube
+			const intersectionPoint = intersects[0].point;
+
+			if (targetMarkerCube) {
+				// Update existing marker cube position and scale
+				targetMarkerCube.position.copy(intersectionPoint);
+				targetMarkerCube.scale.set(targetMarkerSize, targetMarkerSize, targetMarkerSize);
+			} else {
+				// Create the marker cube if it doesn't exist
+				targetMarkerCube = makeInstance(geometry, 0xffff00, // Yellow color
+					intersectionPoint.x, intersectionPoint.y, intersectionPoint.z,
+					targetMarkerSize // Apply larger scale
+				);
+				// Ensure the marker cube faces outward or is oriented reasonably
+				// A simple lookAt the origin might work, or align its normal with the face normal
+				targetMarkerCube.lookAt(0, 0, 0); // Make it look towards the origin
+				targetMarkerCube.rotateY(Math.PI); // Rotate 180 degrees to face outwards
+
+				// Add the marker cube to a list if needed for specific interactions,
+				// but not to spawnedCubePositions as it's not part of the trail.
+			}
+			console.log("Updated target marker position on cube surface:", intersectionPoint);
+		} else {
+			console.warn("Could not find intersection on cube for target marker. Target might be precisely on an edge/vertex.");
+			// Handle cases where intersection isn't found, perhaps hide the marker or log an error.
+			if (targetMarkerCube) {
+				targetMarkerCube.visible = false; // Hide if no valid spot is found
+			}
+		}
+	}
+
 
 	// Flag to track if the camera has already been randomized after entering the circle
 	let cameraRandomized = false;
 
-	// Главная функция рендеринга
+	// Main rendering loop
 	function render(time) {
 		time *= 0.001;
 
@@ -253,37 +313,63 @@ function initGameReate() {
 
 	window.addEventListener('resize', onWindowResize);
 	const controls = new ArcballControls(camera, renderer.domElement, scene);
-	let currentCircleLatitude = 45; // Initialize with a default value
-	let currentCircleLongitude = 15; // Initialize with a default value
+	controls.setCamera(camera); // Ensure controls are linked to the camera
+	controls.target.set(0, 0, 0); // Set controls target to the center of the main cube
+	controls.update(); // Update controls to apply the target
 
-	const circleRadius = 0.5;
-	
-	let s = 0;
+	let currentCircleLatitude = getRandomArbitrary(-90, 90); // Randomize initial target
+	let currentCircleLongitude = getRandomArbitrary(-180, 180); // Randomize initial target
+
+	// The radius for the *spherical* winning condition check
+	const circleRadius = 0.5; // This seems like an angular radius in radians based on usage
+
+	let s = 0; // Score variable
+
+	const container = document.querySelector('.container');
+	const scoreDisplay = document.querySelector('.score');
+	scoreDisplay.innerText = '0';
+
+	// Initial setup for score display size and rotation
+	if (window.innerWidth < window.innerHeight) {
+		scoreDisplay.style.fontSize = '130vw';
+		scoreDisplay.style.rotate = '90deg';
+	} else {
+		scoreDisplay.style.fontSize = '100vh';
+	}
+
+	// Initial update of the target marker cube
+	updateTargetMarker(currentCircleLatitude, currentCircleLongitude);
+
 
 	controls.addEventListener('end', () => {
-		renderer.render(scene, camera);
+		// Renderer render is already called in the render loop
+
 		const isInside = isCameraInsideCircleLatLon(
 			camera.position,
 			currentCircleLatitude,
 			currentCircleLongitude,
 			circleRadius
 		);
+
 		if (isInside && !cameraRandomized) {
 			console.log("Camera is inside the circle - randomizing position and circle");
-			s++
-			setCameraToLatLonPositionOnSphere(
-				getRandomArbitrary(-90, 90),
-				getRandomArbitrary(-180, 180),
-				camera
-				);
-			scoreDisplay.innerText = s;
+			s++; // Increment score
+			scoreDisplay.innerText = s; // Update score display
 			cameraRandomized = true; // Set the flag
 
-			// Reroll the circle center until the camera is NOT inside it
+			// Reroll the target circle until the camera is NOT inside it
 			let newLatitude, newLongitude;
+			// Add a safeguard to prevent infinite loops in edge cases
+			let attempts = 0;
+			const maxAttempts = 100;
 			do {
 				newLatitude = getRandomArbitrary(-90, 90);
 				newLongitude = getRandomArbitrary(-180, 180);
+				attempts++;
+				if (attempts > maxAttempts) {
+					console.warn("Could not find a new circle center outside the camera position after many attempts.");
+					break; // Exit loop if too many attempts
+				}
 			} while (isCameraInsideCircleLatLon(
 				camera.position,
 				newLatitude,
@@ -294,124 +380,129 @@ function initGameReate() {
 			currentCircleLatitude = newLatitude;
 			currentCircleLongitude = newLongitude;
 			console.log("New circle center:", currentCircleLatitude, currentCircleLongitude);
+
+			// Update the position of the target marker cube
+			updateTargetMarker(currentCircleLatitude, currentCircleLongitude);
+
+			// Check win condition (could potentially move this to a separate check if needed later)
+			if (s >= gameAnswer) {
+				console.log("Game Stage 3 Won!");
+				globalGameState = 3; // Assuming stage 4 or offline is next
+				// Clean up Three.js scene and renderer
+				renderer.domElement.style.animation = 'fadeOut 5s linear forwards';
+				sleep(5000).then(() => {
+					renderer.dispose(); // Dispose Three.js resources
+					renderer.domElement.remove(); // Remove canvas from DOM
+					// Remove other elements if necessary (container, scoreDisplay)
+					container.remove();
+					scoreDisplay.remove();
+					// Call the next game state initializer
+					changeGameState(globalGameState);
+				});
+			}
+
+
 		} else if (!isInside && cameraRandomized) {
 			// Reset the flag when the camera moves outside the circle
 			cameraRandomized = false;
 		}
 	});
-	controls.setCamera(camera);
+
+    controls.addEventListener('change', () => {
+		// Renderer render is already called in the render loop
+
+        // Update the picking ray with the camera and pointer position (pointer isn't used here, ray from camera center)
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera); // Ray from the center of the screen
+
+        // Calculate objects intersecting the picking ray
+        const intersects = raycaster.intersectObjects(cubes); // Intersect with the main cube
+
+        if (intersects.length > 0) {
+            // Get the first intersection point on the cube's surface
+            const intersectionPoint = intersects[0].point;
+
+            // Check if a cube already exists near this intersection point
+            let cubeExists = false;
+            for (const pos of spawnedCubePositions) {
+                const distance = pos.distanceTo(intersectionPoint);
+                if (distance < spawnRadius) {
+                    cubeExists = true;
+                    break;
+                }
+            }
+
+            // If no cube exists, spawn a new red one
+            if (!cubeExists) {
+                // Use the intersection point as the position for the new cube
+                const newCube = makeInstance(geometry, 0xff0000, // Red color
+					intersectionPoint.x, intersectionPoint.y, intersectionPoint.z,
+					0.2
+				);
+                spawnedCubePositions.push(newCube.position.clone()); // Store a clone of the position vector
+                // console.log("Spawned a new red cube at:", newCube.position); // Log the new cube's position
+            }
+        }
+    });
+
+	// Disable pan and zoom as per original request
 	controls.enablePan = false;
 	controls.enableZoom = false;
-	controls.setGizmosVisible(false);
+	controls.setGizmosVisible(false); // Hide the ArcballControls gizmos
 
-	// Добавляем направленный свет к камере после инициализации камеры и света
-	camera.add(directionalLight);
+	// Add lights and camera to the scene
+	camera.add(directionalLight); // Directional light attached to camera
 	scene.add(ambientLight);
-	scene.add(camera);
+	scene.add(camera); // Add camera to the scene to make the attached light effective
 
-	randomizeRotation(cubes[0]);
 
-	const container = document.querySelector('.container');
-	const scoreDisplay = document.querySelector('.score');
-	scoreDisplay.innerText = '0';
 	container.style.animation = 'fadeIn 5s linear forwards';
 
-	if (window.innerWidth < window.innerHeight) {
-		scoreDisplay.style.fontSize = '130vw';
-		scoreDisplay.style.rotate = '90deg';
-	} else {
-		scoreDisplay.style.fontSize = '100vh';
-	}
-
+	// Helper function to convert degrees to radians
 	function degreesToRadians(degrees) {
 		return degrees * Math.PI / 180;
 	}
 
+	// Helper function to convert Lat/Lon to Cartesian coordinates on a sphere of given radius
+	// Adjusted for THREE.js Y-up convention
 	function latLonToCartesian(latitude, longitude, radius) {
-		const latRad = degreesToRadians(latitude);
-		const lonRad = degreesToRadians(longitude);
+		const latRad = degreesToRadians(latitude); // Angle from XZ plane towards Y
+		const lonRad = degreesToRadians(longitude); // Angle in XZ plane from +X
 
 		const x = radius * Math.cos(latRad) * Math.cos(lonRad);
-		const y = radius * Math.cos(latRad) * Math.sin(lonRad);
-		const z = radius * Math.sin(latRad);
+		const y = radius * Math.sin(latRad); // Y is vertical based on latitude
+		const z = radius * Math.cos(latRad) * Math.sin(lonRad);
 
-		return { x: x, y: y, z: z };
+		return new THREE.Vector3(x, y, z); // Return a Three.js Vector3
 	}
 
-	function isCameraInsideCircleLatLon(cameraPosition, circleLatitude, circleLongitude, circleRadius) {
-		// Assuming:
-		// - cameraPosition: { x: number, y: number, z: number } - current camera coordinates
-		// - circleLatitude: number - latitude of the center of the circle in degrees
-		// - circleLongitude: number - longitude of the center of the circle in degrees
-		// - circleRadius: number - the angular radius of the circle in radians
+	// Helper function to check if camera position (on sphere) is within a target circle (on sphere)
+	function isCameraInsideCircleLatLon(cameraPosition, circleLatitude, circleLongitude, circleAngularRadius) {
+		// Convert latitude and longitude of the circle center to Cartesian direction on a unit sphere
+		const circleCenterDirection = latLonToCartesian(circleLatitude, circleLongitude, 1).normalize();
 
-		// Convert latitude and longitude of the circle center to Cartesian coordinates
-		const circleCenter = latLonToCartesian(circleLatitude, circleLongitude, 2); // Radius of the sphere is 2
+		// Get the normalized direction of the camera from the origin
+		const cameraDirection = cameraPosition.clone().normalize();
 
-		// Normalize the camera position vector
-		const cameraMagnitude = Math.sqrt(
-			cameraPosition.x * cameraPosition.x +
-			cameraPosition.y * cameraPosition.y +
-			cameraPosition.z * cameraPosition.z
-		);
-		const normalizedCamera = {
-			x: cameraPosition.x / cameraMagnitude,
-			y: cameraPosition.y / cameraMagnitude,
-			z: cameraPosition.z / cameraMagnitude,
-		};
+		// Calculate the dot product (cosine of the angle) between the two normalized vectors
+		const dotProduct = cameraDirection.dot(circleCenterDirection);
 
-		// Normalize the circle center vector
-		const centerMagnitude = Math.sqrt(
-			circleCenter.x * circleCenter.x +
-			circleCenter.y * circleCenter.y +
-			circleCenter.z * circleCenter.z
-		);
-		const normalizedCenter = {
-			x: circleCenter.x / centerMagnitude,
-			y: circleCenter.y / centerMagnitude,
-			z: circleCenter.z / centerMagnitude,
-		};
-
-		// Calculate the dot product of the two normalized vectors
-		const dotProduct =
-			normalizedCamera.x * normalizedCenter.x +
-			normalizedCamera.y * normalizedCenter.y +
-			normalizedCamera.z * normalizedCenter.z;
-
-		// The dot product is equal to the cosine of the angle between the two vectors.
-		// Calculate the angle (angular distance) between the camera and the circle center.
-		// Ensure dotProduct is within [-1, 1] to avoid errors with Math.acos due to floating-point inaccuracies.
+		// Calculate the angular distance (angle) between the camera direction and the circle center direction
+		// Ensure dotProduct is within [-1, 1] due to floating-point inaccuracies.
 		const angle = Math.acos(Math.min(Math.max(dotProduct, -1), 1));
 
-		// Check if the angular distance is less than or equal to the circle radius
-		return angle <= circleRadius;
+		// Check if the angular distance is less than or equal to the circle angular radius
+		return angle <= circleAngularRadius;
 	}
 
-	function setCameraToLatLonPositionOnSphere(latitude, longitude, camera) {
-		// Radius of the sphere
-		const radius = 2;
-
-		// Convert latitude and longitude to radians
-		const latRad = degreesToRadians(latitude);
-		const lonRad = degreesToRadians(longitude);
-
-		const x = radius * Math.cos(latRad) * Math.cos(lonRad);
-		const y = radius * Math.cos(latRad) * Math.sin(lonRad);
-		const z = radius * Math.sin(latRad);
-
-		// Update the camera's position
-		camera.position.x = x;
-		camera.position.y = y;
-		camera.position.z = z;
-	}
-
-	console.log("Is the camera inside the circle?", isCameraInsideCircleLatLon(
+	// Check initial state (optional, but good for debugging)
+	console.log("Is the camera inside the initial target circle?", isCameraInsideCircleLatLon(
 		camera.position,
-		45,
-		15,
-		0.5
+		currentCircleLatitude,
+		currentCircleLongitude,
+		circleRadius
 	));
-	// Запускаем цикл рендеринга
+
+	// Start the rendering loop
 	requestAnimationFrame(render);
 }
 
@@ -443,6 +534,7 @@ function changeGameState(gameState) {
 	}
 }
 
+// Initial game state setup
 changeGameState(globalGameState);
 
 // cheats
@@ -460,6 +552,13 @@ const dataDisplay = document.createElement('div');
 dataDisplay.classList.add('dataDisplay');
 document.body.appendChild(dataDisplay);
 dataDisplay.style.position = 'absolute';
+dataDisplay.style.top = '10px';
+dataDisplay.style.left = '10px';
+dataDisplay.style.color = 'white';
+dataDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+dataDisplay.style.padding = '10px';
+dataDisplay.style.zIndex = '1000'; // Ensure it's above the canvas
+
 function updateDataDisplay() {
 	dataDisplay.innerHTML = `
 		<div>Game state: ${globalGameState}</div>
@@ -467,7 +566,8 @@ function updateDataDisplay() {
 		<div>Game answer: ${gameAnswer}</div>
 	`;
 }
-while (true) {
-	updateDataDisplay();
-	await new Promise(resolve => setTimeout(resolve, 100));
-}
+
+// Use a proper loop or setInterval for updating the display
+// The 'while (true)' loop with await is not standard for browser environments outside async functions.
+// Let's use setInterval.
+setInterval(updateDataDisplay, 100); // Update every 100 milliseconds
