@@ -1,11 +1,17 @@
+# sefirot
+
+bun, vite, ts, three
+
 # install
 
-    pip install -r requirements.txt
+[bun](https://bun.com/)
+
+    bun install
 
 # run
 
-    python app.py
+    bun run dev
 
 # enjoy
 
-    localhost:8000
+    http://localhost:5173/
