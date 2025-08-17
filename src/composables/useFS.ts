@@ -13,16 +13,17 @@ interface FSNode {
   path: string; // Full, normalized path, e.g., C:\USERS\PUBLIC\FILE.TXT
   parent: string; // Parent directory path, e.g., C:\USERS\PUBLIC
   name: string; // The actual name, e.g., FILE.TXT
-  type: "file" | "directory";
+  type: "file" | "directory" | "symlink";
   createdAt: Date;
   modifiedAt: Date;
   attributes: FSAttributes;
   content?: ArrayBuffer; // Content is only for files
+  target?: string; // Target path for symlinks
 }
 
 // --- Database Setup ---
-// The database is upgraded to version 3 for the new Windows-like features.
-const dbPromise = openDB("pseudo-os-fs-v3-windows", 1, {
+// The database is upgraded to version 5 for desktop structure.
+const dbPromise = openDB("pseudo-os-fs-v5-windows", 1, {
   upgrade(db) {
     if (!db.objectStoreNames.contains("nodes")) {
       const store = db.createObjectStore("nodes", { keyPath: "path" });
@@ -52,6 +53,23 @@ export function useWindowsFS() {
     if (!existing) {
       await mkdir(drivePath);
     }
+    
+    // Always ensure the desktop structure exists
+    const systemPath = `${drivePath}System`;
+    if (!(await exists(systemPath))) {
+      await mkdir(systemPath);
+    }
+    
+    const desktopPath = `${systemPath}\\Desktop`;
+    if (!(await exists(desktopPath))) {
+      await mkdir(desktopPath);
+    }
+    
+    // Create File Explorer symlink if it doesn't exist
+    const explorerLinkPath = `${desktopPath}\\File Explorer.lnk`;
+    if (!(await exists(explorerLinkPath))) {
+      await createSymlink(explorerLinkPath, "fileexplorer://");
+    }
   }
 
   /**
@@ -77,6 +95,11 @@ export function useWindowsFS() {
     const now = new Date();
     const { normalizedPath, parentPath, name } = parsePath(path);
 
+    // Validate Windows naming restrictions
+    if (!isValidWindowsName(name)) {
+      throw new Error(`Invalid file name: '${name}'. File names cannot contain < > : " | ? * and cannot end with . or space.`);
+    }
+
     const parent = await db.get("nodes", parentPath);
     if (!parent || parent.type !== "directory") {
       throw new Error(`Parent directory '${parentPath}' does not exist.`);
@@ -98,14 +121,71 @@ export function useWindowsFS() {
   }
 
   /**
-   * Reads the content of a file.
+   * Creates a symbolic link.
+   * @param linkPath - The path where the symlink will be created.
+   * @param targetPath - The path that the symlink points to.
+   */
+  async function createSymlink(linkPath: string, targetPath: string) {
+    const db = await dbPromise;
+    const now = new Date();
+    const { normalizedPath, parentPath, name } = parsePath(linkPath);
+
+    // Validate Windows naming restrictions
+    if (name && !isValidWindowsName(name)) {
+      throw new Error(`Invalid symlink name: '${name}'. Names cannot contain < > : " | ? * and cannot end with . or space.`);
+    }
+
+    if (await exists(normalizedPath)) {
+      throw new Error(`Path '${normalizedPath}' already exists.`);
+    }
+
+    // Ensure the parent exists
+    if (name !== "" && parentPath !== "") {
+        const parent = await db.get("nodes", parentPath);
+        if (!parent || parent.type !== "directory") {
+            throw new Error(`Parent directory '${parentPath}' does not exist.`);
+        }
+    }
+
+    const entry: FSNode = {
+      path: normalizedPath,
+      parent: parentPath,
+      name,
+      type: "symlink",
+      target: targetPath,
+      createdAt: now,
+      modifiedAt: now,
+      attributes: { readOnly: false, hidden: false },
+    };
+    await db.put("nodes", entry);
+  }
+
+  /**
+   * Resolves a symlink to its target path.
+   * @param path - The path to resolve.
+   * @returns The resolved path or the original path if not a symlink.
+   */
+  async function resolveSymlink(path: string): Promise<string> {
+    const db = await dbPromise;
+    const normalizedPath = normalizePath(path);
+    const entry = await db.get("nodes", normalizedPath);
+    
+    if (entry && entry.type === "symlink" && entry.target) {
+      return entry.target;
+    }
+    
+    return normalizedPath;
+  }
+
+  /**
+   * Reads a file or follows a symlink to read the target file.
    * @param path - The path of the file to read.
    * @returns The content of the file or undefined if not found.
    */
   async function readFile(path: string): Promise<ArrayBuffer | undefined> {
     const db = await dbPromise;
-    const normalizedPath = normalizePath(path);
-    const entry = (await db.get("nodes", normalizedPath)) as FSNode | undefined;
+    const resolvedPath = await resolveSymlink(path);
+    const entry = (await db.get("nodes", resolvedPath)) as FSNode | undefined;
     return entry && entry.type === "file" ? entry.content : undefined;
   }
 
@@ -117,6 +197,11 @@ export function useWindowsFS() {
     const db = await dbPromise;
     const now = new Date();
     const { normalizedPath, parentPath, name } = parsePath(path);
+
+    // Validate Windows naming restrictions
+    if (name && !isValidWindowsName(name)) {
+      throw new Error(`Invalid directory name: '${name}'. Directory names cannot contain < > : " | ? * and cannot end with . or space.`);
+    }
 
     if (await exists(normalizedPath)) {
       throw new Error(`Path '${normalizedPath}' already exists.`);
@@ -143,14 +228,14 @@ export function useWindowsFS() {
   }
 
   /**
-   * Lists the contents of a given directory path.
+   * Lists the contents of a given directory path, resolving symlinks.
    * @param path - The path of the directory to read.
    * @returns An array of FSNode objects.
    */
   async function readdir(path: string): Promise<FSNode[]> {
     const db = await dbPromise;
-    const normalizedPath = normalizePath(path);
-    return db.getAllFromIndex("nodes", "by-parent", normalizedPath);
+    const resolvedPath = await resolveSymlink(path);
+    return db.getAllFromIndex("nodes", "by-parent", resolvedPath);
   }
 
   /**
@@ -264,13 +349,33 @@ export function useWindowsFS() {
       }
   }
 
-  return { initializeDrive, exists, writeFile, readFile, mkdir, readdir, rm, rmdir, move, copy };
+  return { initializeDrive, exists, writeFile, readFile, mkdir, readdir, rm, rmdir, move, copy, createSymlink, resolveSymlink };
 }
 
 // --- Helper Functions ---
 
 /**
- * Normalizes a path to be consistent (uppercase, backslashes, default drive).
+ * Windows file naming restrictions
+ */
+const WINDOWS_INVALID_CHARS = /[<>:"|?*]/;
+const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i;
+
+/**
+ * Validates a file or directory name according to Windows restrictions
+ * @param name - The name to validate
+ * @returns True if valid, false otherwise
+ */
+function isValidWindowsName(name: string): boolean {
+  if (!name || name.trim() === '') return false;
+  if (name.length > 255) return false;
+  if (WINDOWS_INVALID_CHARS.test(name)) return false;
+  if (WINDOWS_RESERVED_NAMES.test(name)) return false;
+  if (name.endsWith('.') || name.endsWith(' ')) return false;
+  return true;
+}
+
+/**
+ * Normalizes a path to be consistent (case-sensitive, backslashes, default drive).
  * @param path - The path string to normalize.
  * @returns A fully qualified, normalized path string.
  */
@@ -279,7 +384,8 @@ function normalizePath(path: string): string {
   if (!/^[a-zA-Z]:\\/.test(p)) {
     p = "C:\\" + p.replace(/^\\+/, ""); // Default to C: drive
   }
-  return p.toUpperCase(); // Case-insensitive
+  // Keep original case - don't convert to uppercase
+  return p;
 }
 
 /**
