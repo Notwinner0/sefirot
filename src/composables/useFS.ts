@@ -365,7 +365,7 @@ const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i;
  * @param name - The name to validate
  * @returns True if valid, false otherwise
  */
-function isValidWindowsName(name: string): boolean {
+export function isValidWindowsName(name: string): boolean {
   if (!name || name.trim() === '') return false;
   if (name.length > 255) return false;
   if (WINDOWS_INVALID_CHARS.test(name)) return false;
@@ -379,7 +379,7 @@ function isValidWindowsName(name: string): boolean {
  * @param path - The path string to normalize.
  * @returns A fully qualified, normalized path string.
  */
-function normalizePath(path: string): string {
+export function normalizePath(path: string): string {
   let p = path.replace(/\//g, "\\"); // Use backslashes
   if (!/^[a-zA-Z]:\\/.test(p)) {
     p = "C:\\" + p.replace(/^\\+/, ""); // Default to C: drive
@@ -393,7 +393,7 @@ function normalizePath(path: string): string {
  * @param path - The path string to parse.
  * @returns An object with normalizedPath, parentPath, and name.
  */
-function parsePath(path: string) {
+export function parsePath(path: string) {
   const normalizedPath = normalizePath(path);
   const lastSlashIndex = normalizedPath.lastIndexOf("\\");
 
