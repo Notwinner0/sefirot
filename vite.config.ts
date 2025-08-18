@@ -7,6 +7,9 @@ export default defineConfig({
     tailwindcss(),
     vue()
   ],
+  css: {
+    devSourcemap: true,
+  },
   // server: {
   //   proxy: {
   //     "/theia": {
