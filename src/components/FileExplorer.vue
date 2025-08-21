@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useWindowsFS } from "../composables/useFS";
 import { useWindowsStore } from "../stores/windows";
+import { useEventBus } from "../composables/useEventBus";
 
 interface FSNode {
   path: string;
@@ -17,6 +18,10 @@ interface FSNode {
   content?: ArrayBuffer;
   target?: string; // For symlinks
 }
+
+const props = defineProps<{
+  initialPath?: string;
+}>();
 
 const fs = useWindowsFS();
 const currentPath = ref("C:\\");
@@ -61,7 +66,7 @@ async function loadDirectory(path: string) {
 
 onMounted(async () => {
   await fs.initializeDrive("C");
-  await loadDirectory(currentPath.value);
+  await loadDirectory(props.initialPath || "C:\\");
   
   // Close context menu when clicking outside
   document.addEventListener('click', closeContextMenu);
@@ -148,6 +153,8 @@ async function createFile() {
   }
 }
 
+const eventBus = useEventBus();
+
 async function createDirectory() {
   const name = prompt("Enter new directory name:");
   if (name) {
@@ -155,6 +162,9 @@ async function createDirectory() {
     try {
       await fs.mkdir(dirPath);
       await loadDirectory(currentPath.value);
+      if (currentPath.value === "C:\\System\\Desktop") {
+        eventBus.emit('desktop-refresh');
+      }
     } catch (error) {
       console.error(`Failed to create directory '${dirPath}':`, error);
       alert(`Error: ${error instanceof Error ? error.message : 'Could not create directory.'}`);

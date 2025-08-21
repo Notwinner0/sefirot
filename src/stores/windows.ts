@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 
 type WindowContent =
   | { type: "iframe"; src: string }
-  | { type: "component"; name: string };
+  | { type: "component"; name: string; props?: Record<string, any> };
 
 interface Window {
   id: string;
@@ -126,6 +126,10 @@ export const useWindowsStore = defineStore("windows", {
       if (content.type === 'iframe') {
         return `iframe-${content.src}`;
       } else {
+        // Include initialPath in the key for FileExplorer to distinguish instances
+        if (content.name === 'FileExplorer' && content.props && content.props.initialPath) {
+          return `component-${content.name}-${content.props.initialPath}`;
+        }
         return `component-${content.name}`;
       }
     },

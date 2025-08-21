@@ -2,6 +2,7 @@
 import { useWindowsStore } from "../stores/windows";
 import { useWindowsFS } from "../composables/useFS";
 import { ref, onMounted, computed, onUnmounted, reactive } from "vue";
+import { useEventBus } from "../composables/useEventBus";
 
 // Types
 interface FSNode {
@@ -106,12 +107,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanupEventListeners();
+  eventBus.off('desktop-refresh', loadDesktopItems);
 });
 
 // Initialization
+const eventBus = useEventBus();
+
 async function initializeDesktop() {
   await fs.initializeDrive("C");
   await loadDesktopItems();
+  eventBus.on('desktop-refresh', loadDesktopItems);
 }
 
 function setupEventListeners() {
@@ -515,10 +520,10 @@ function toggleGrid() {
 // Item operations
 function openItem(node: FSNode) {
   if (node.type === "directory") {
-    windows.openApp("File Explorer", { type: "component", name: "FileExplorer" });
+    windows.openApp("File Explorer", { type: "component", name: "FileExplorer", props: { initialPath: node.path } });
   } else if (node.type === "symlink") {
     if (node.target === "fileexplorer://") {
-      windows.openApp("File Explorer", { type: "component", name: "FileExplorer" });
+      windows.openApp("File Explorer", { type: "component", name: "FileExplorer", props: { initialPath: "C:\\" } });
     } else {
       alert(`Opening symlink: ${node.name} -> ${node.target}`);
     }
@@ -528,7 +533,7 @@ function openItem(node: FSNode) {
 }
 
 function openFileExplorer() {
-  windows.openApp("File Explorer", { type: "component", name: "FileExplorer" });
+  windows.openApp("File Explorer", { type: "component", name: "FileExplorer", props: { initialPath: "C:\\" } });
 }
 
 function getFileIcon(node: FSNode) {
@@ -735,3 +740,12 @@ function selectAll() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.bg-opacity-10 {
+  background-color: transparent;
+}
+.bg-opacity-20 {
+  background-color: transparent;
+}
+</style>

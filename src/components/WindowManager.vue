@@ -150,6 +150,7 @@ const onMouseUp = () => {
           v-else
           :is="FileExplorer"
           v-if="w.content.name === 'FileExplorer'"
+          v-bind="w.content.props"
         />
         
         <!-- Resize handles - only show when not maximized -->
