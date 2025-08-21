@@ -570,8 +570,8 @@ function selectAll() {
       @dblclick="openItem(item)"
       @contextmenu="showContextMenu($event, item)"
       :class="[
-        'absolute w-20 h-20 p-2 rounded hover:bg-white hover:bg-opacity-10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center',
-        selectedItems.has(item.path) ? 'bg-blue-500 bg-opacity-20 border-2 border-blue-400' : '',
+        'absolute w-20 h-20 p-2 rounded hover:bg-white/10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center',
+        selectedItems.has(item.path) ? 'bg-blue-500/20 border-2 border-blue-400' : '',
         isMoving && selectedItems.has(item.path) ? 'opacity-50 scale-95' : ''
       ]"
       :style="{
@@ -580,7 +580,7 @@ function selectAll() {
       }"
     >
       <div :class="`${iconSize} mb-1`">{{ getFileIcon(item) }}</div>
-      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-black hover:drop-shadow-none">
+      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
         {{ item.name }}
       </div>
     </div>
@@ -589,11 +589,11 @@ function selectAll() {
     <div 
       v-if="desktopItems.length === 0" 
       @click="openFileExplorer()"
-      class="absolute w-20 h-20 p-2 rounded hover:bg-white hover:bg-opacity-10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center"
+      class="absolute w-20 h-20 p-2 rounded hover:bg-white/10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center"
       style="left: 16px; top: 16px;"
     >
       <div :class="`${iconSize} mb-1`">🔗</div>
-      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-black hover:drop-shadow-none">
+      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
         File Explorer
       </div>
     </div>
@@ -601,7 +601,7 @@ function selectAll() {
     <!-- Selection Box -->
     <div 
       v-if="selectionBox.visible"
-      class="fixed border-2 border-blue-400 bg-blue-400 bg-opacity-10 pointer-events-none z-40"
+      class="fixed border-2 border-blue-400 bg-blue-400/10 pointer-events-none z-40"
       :style="{
         left: selectionBox.x + 'px',
         top: selectionBox.y + 'px',
@@ -742,10 +742,5 @@ function selectAll() {
 </template>
 
 <style scoped>
-.bg-opacity-10 {
-  background-color: transparent;
-}
-.bg-opacity-20 {
-  background-color: transparent;
-}
+/* Remove custom opacity styles to allow Tailwind's opacity classes to work */
 </style>
