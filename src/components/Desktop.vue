@@ -554,7 +554,7 @@ function selectAll() {
   <div
     class="absolute inset-0 bg-cover bg-center text-white p-4 select-none desktop-container"
     :class="{ 'cursor-grabbing': isMoving, 'cursor-crosshair': isDragging }"
-    style="background-image: url('/src/assets/bg.jpg')"
+    style="background: linear-gradient(to right top, #051937, #004d7a, #008793, #00bf72, #a8eb12);"
     @contextmenu="showContextMenu($event)"
     @mousedown="startDrag"
     @mousemove="onMouseMove"
