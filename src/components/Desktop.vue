@@ -3,6 +3,7 @@ import { useWindowsStore } from "../stores/windows";
 import { useWindowsFS } from "../composables/useFS";
 import { ref, onMounted, computed, onUnmounted, reactive } from "vue";
 import { useEventBus } from "../composables/useEventBus";
+import { useContextMenu } from "../composables/useContextMenu";
 
 // Import Icons
 import { 
@@ -57,12 +58,7 @@ interface SelectionBox {
   visible: boolean;
 }
 
-interface ContextMenu {
-  show: boolean;
-  x: number;
-  y: number;
-  target: FSNode | null;
-}
+
 
 // Constants
 const GRID_SIZE = 80;
@@ -100,13 +96,7 @@ const selectionBox = reactive<SelectionBox>({
   visible: false
 });
 
-// Context menu state
-const contextMenu = reactive<ContextMenu>({
-  show: false,
-  x: 0,
-  y: 0,
-  target: null
-});
+const { contextMenu, showContextMenu, closeContextMenu, forceCloseAllMenus } = useContextMenu('Desktop');
 
 // Computed properties
 const hasSelection = computed(() => selectedItems.value.size > 0);
@@ -142,13 +132,13 @@ async function initializeDesktop() {
 }
 
 function setupEventListeners() {
-  document.addEventListener('click', closeContextMenu);
+  // Note: Context menu global click handling is now managed by the useContextMenu composable
   // document.addEventListener('selectstart', preventTextSelection);
   // document.addEventListener('mousedown', preventTextSelection);
 }
 
 function cleanupEventListeners() {
-  document.removeEventListener('click', closeContextMenu);
+  // Note: Context menu global click handling is now managed by the useContextMenu composable
   document.removeEventListener('selectstart', preventTextSelection);
   document.removeEventListener('mousedown', preventTextSelection);
 }
@@ -514,25 +504,7 @@ function findNextAvailablePosition(startX: number, startY: number, occupied: Set
   return { x: startX, y: startY };
 }
 
-// Context menu
-function showContextMenu(event: MouseEvent, node?: FSNode) {
-  event.preventDefault();
-  
-  if (node && !selectedItems.value.has(node.path)) {
-    selectSingle(node.path);
-  } else if (!node) {
-    selectedItems.value.clear();
-  }
-  
-  contextMenu.show = true;
-  contextMenu.x = event.clientX;
-  contextMenu.y = event.clientY;
-  contextMenu.target = node || null;
-}
 
-function closeContextMenu() {
-  contextMenu.show = false;
-}
 
 function toggleGrid() {
   isGridEnabled.value = !isGridEnabled.value;
@@ -581,6 +553,11 @@ function selectAll() {
   desktopItems.value.forEach(item => selectedItems.value.add(item.path));
   closeContextMenu();
 }
+
+function refreshDesktop() {
+  loadDesktopItems();
+  closeContextMenu();
+}
 </script>
 
 <template>
@@ -601,7 +578,7 @@ function selectAll() {
       :data-item-path="item.path"
       @click="selectItem(item, $event)"
       @dblclick="openItem(item)"
-      @contextmenu="showContextMenu($event, item)"
+      @contextmenu.stop="showContextMenu($event, item)"
       :class="[
         'absolute w-20 h-20 p-2 rounded hover:bg-white/10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center',
         selectedItems.has(item.path) ? 'bg-blue-500/20 border-2 border-blue-400' : '',
@@ -644,15 +621,15 @@ function selectAll() {
     />
 
     <!-- Context Menu -->
-    <div 
-      v-if="contextMenu.show" 
+    <div
+      v-if="contextMenu.show"
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-      class="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-48"
+      class="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-48 context-menu"
     >
       <!-- Open -->
-      <button 
-        v-if="hasSingleSelection" 
-        @click="openItem(contextMenu.target!); closeContextMenu()" 
+      <button
+        v-if="hasSingleSelection"
+        @click="closeContextMenu(); openItem(contextMenu.target!)"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
         <OpenInNewIcon :size="18" class="mr-2" /> Open
@@ -761,8 +738,8 @@ function selectAll() {
           <span class="text-xs text-gray-600">▶</span>
         </button>
         <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
-          <button 
-            @click="toggleGrid()" 
+          <button
+            @click="toggleGrid()"
             class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center text-gray-800"
           >
             <component :is="isGridEnabled ? CheckboxMarkedOutlineIcon : CheckboxBlankOutlineIcon" :size="18" class="mr-2" />
@@ -770,6 +747,16 @@ function selectAll() {
           </button>
         </div>
       </div>
+
+      <div class="border-t border-gray-200 my-1" />
+
+      <!-- Refresh -->
+      <button
+        @click="refreshDesktop()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
+      >
+        <CogIcon :size="18" class="mr-2" /> Refresh
+      </button>
     </div>
   </div>
 </template>

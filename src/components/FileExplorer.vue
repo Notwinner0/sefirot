@@ -3,6 +3,7 @@ import { ref, onMounted, computed, nextTick } from "vue";
 import { useWindowsFS } from "../composables/useFS";
 import { useWindowsStore } from "../stores/windows";
 import { useEventBus } from "../composables/useEventBus";
+import { useContextMenu } from "../composables/useContextMenu";
 
 // Import Icons
 import {
@@ -22,7 +23,8 @@ import {
   CogIcon,
   EyeOutlineIcon,
   ArrowUpBoldIcon,
-  HomeIcon
+  HomeIcon,
+  CloseIcon
 } from '../icons';
 
 // Import icon utilities
@@ -59,18 +61,7 @@ const editableAddress = ref("");
 const addressInput = ref<HTMLInputElement | null>(null);
 const addressBarRef = ref<HTMLDivElement | null>(null);
 
-// Context menu state
-const contextMenu = ref<{
-  show: boolean;
-  x: number;
-  y: number;
-  target: FSNode | null;
-}>({
-  show: false,
-  x: 0,
-  y: 0,
-  target: null
-});
+const { contextMenu, showContextMenu, closeContextMenu, forceCloseAllMenus } = useContextMenu('FileExplorer');
 
 // Clipboard for cut/copy operations
 const clipboard = ref<{
@@ -96,9 +87,8 @@ async function loadDirectory(path: string) {
 onMounted(async () => {
   await fs.initializeDrive("C");
   await loadDirectory(props.initialPath || "C:\\");
-  
-  // Close context menu when clicking outside
-  document.addEventListener('click', closeContextMenu);
+
+  // Note: Context menu global click handling is now managed by the useContextMenu composable
   document.addEventListener('click', handleClickOutsideAddressBar);
 });
 
@@ -134,31 +124,7 @@ function selectItem(node: FSNode, event: MouseEvent) {
   }
 }
 
-function showContextMenu(event: MouseEvent, node?: FSNode) {
-  event.preventDefault();
-  
-  // If right-clicking on a specific item, select it
-  if (node && !selectedItems.value.has(node.path)) {
-    selectedItems.value.clear();
-    selectedItems.value.add(node.path);
-  }
-  
-  // If right-clicking on empty space, clear selection
-  if (!node) {
-    selectedItems.value.clear();
-  }
-  
-  contextMenu.value = {
-    show: true,
-    x: event.clientX,
-    y: event.clientY,
-    target: node || null
-  };
-}
 
-function closeContextMenu() {
-  contextMenu.value.show = false;
-}
 
 function handleClickOutsideAddressBar(event: MouseEvent) {
   if (isEditingAddress.value && addressBarRef.value && !addressBarRef.value.contains(event.target as Node)) {
@@ -349,6 +315,92 @@ function selectAll() {
   nodes.value.forEach(node => selectedItems.value.add(node.path));
 }
 
+// New Windows-like context menu functions
+function openItem() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length === 1) {
+    const node = selectedNodes[0];
+    if (node.type === 'directory') {
+      loadDirectory(node.path);
+    } else {
+      // For files, show placeholder message
+      alert(`Opening file: ${node.name}\n(This is a placeholder - file opening not implemented)`);
+    }
+  }
+}
+
+function editItem() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length === 1) {
+    const node = selectedNodes[0];
+    if (node.type === 'file') {
+      alert(`Editing file: ${node.name}\n(This is a placeholder - file editing not implemented)`);
+    } else {
+      alert('Cannot edit directories');
+    }
+  }
+}
+
+function printItem() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length === 1) {
+    alert(`Printing: ${selectedNodes[0].name}\n(This is a placeholder - printing not implemented)`);
+  }
+}
+
+function createShortcut() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length === 1) {
+    alert(`Creating shortcut for: ${selectedNodes[0].name}\n(This is a placeholder - shortcut creation not implemented)`);
+  }
+}
+
+function openWith() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length === 1 && selectedNodes[0].type === 'file') {
+    alert(`Opening "${selectedNodes[0].name}" with...\n(This is a placeholder - open with not implemented)`);
+  }
+}
+
+function sendToDesktop() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length > 0) {
+    alert(`Sending ${selectedNodes.length} item(s) to Desktop\n(This is a placeholder - send to not implemented)`);
+  }
+}
+
+function sendToDocuments() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length > 0) {
+    alert(`Sending ${selectedNodes.length} item(s) to Documents\n(This is a placeholder - send to not implemented)`);
+  }
+}
+
+function refreshDirectory() {
+  loadDirectory(currentPath.value);
+}
+
+function showViewOptions() {
+  // This will be handled by the submenu
+}
+
+function sortByName() {
+  // For now, just show placeholder - actual sorting would need more implementation
+  alert('Sorting by Name\n(This is a placeholder - sorting not fully implemented)');
+}
+
+function sortByDate() {
+  alert('Sorting by Date Modified\n(This is a placeholder - sorting not fully implemented)');
+}
+
+function sortByType() {
+  alert('Sorting by Type\n(This is a placeholder - sorting not fully implemented)');
+}
+
+function sortBySize() {
+  alert('Sorting by Size\n(This is a placeholder - sorting not fully implemented)');
+}
+
 const parentPath = computed(() => {
   if (currentPath.value.endsWith(":\\")) {
     return null;
@@ -511,7 +563,7 @@ function getFileIconColor(node: FSNode) {
             <tr v-for="node in sortedNodes" :key="node.path"
               @click="selectItem(node, $event)"
               @dblclick="navigate(node)"
-              @contextmenu="showContextMenu($event, node)"
+              @contextmenu.stop="showContextMenu($event, node)"
               :class="['border-b border-gray-100 hover:bg-blue-50 cursor-pointer', 
                 selectedItems.has(node.path) ? 'bg-blue-100' : '']">
               <td class="p-2 flex items-center">
@@ -538,7 +590,7 @@ function getFileIconColor(node: FSNode) {
           <div v-for="node in sortedNodes" :key="node.path"
             @click="selectItem(node, $event)"
             @dblclick="navigate(node)"
-            @contextmenu="showContextMenu($event, node)"
+            @contextmenu.stop="showContextMenu($event, node)"
             :class="['p-2 rounded hover:bg-blue-50 cursor-pointer flex items-center', 
               selectedItems.has(node.path) ? 'bg-blue-100' : '']">
             <component :is="getFileIcon(node)" :size="20" :fillColor="getFileIconColor(node)" class="mr-2" />
@@ -553,7 +605,7 @@ function getFileIconColor(node: FSNode) {
           <div v-for="node in sortedNodes" :key="node.path"
             @click="selectItem(node, $event)"
             @dblclick="navigate(node)"
-            @contextmenu="showContextMenu($event, node)"
+            @contextmenu.stop="showContextMenu($event, node)"
             :class="['p-3 rounded hover:bg-blue-50 cursor-pointer text-center', 
               selectedItems.has(node.path) ? 'bg-blue-100' : '']">
             <div class="text-3xl mb-2">
@@ -566,8 +618,8 @@ function getFileIconColor(node: FSNode) {
 
       <!-- Empty State -->
       <div v-if="sortedNodes.length === 0" class="flex items-center justify-center h-full text-gray-600">
-        <div class="text-center">
-          <div class="text-4xl mb-2">
+        <div class="text-center flex flex-col items-center">
+          <div class="mb-2 flex items-center justify-center">
             <FolderOpenIcon :size="48" fillColor="#FFCA28" />
           </div>
           <div class="text-gray-700">This folder is empty</div>
@@ -583,31 +635,45 @@ function getFileIconColor(node: FSNode) {
     </div>
 
     <!-- Context Menu -->
-    <div v-if="contextMenu.show" 
+    <div v-if="contextMenu.show"
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-      class="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-48">
-      
+      class="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-48 context-menu">
+
+      <!-- Open (only when single item is selected) -->
+      <button v-if="hasSingleSelection" @click="closeContextMenu(); openItem()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <OpenInNewIcon :size="18" class="mr-2" /> Open
+      </button>
+
+      <!-- Edit (only when single file is selected) -->
+      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="closeContextMenu(); editItem()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <PencilIcon :size="18" class="mr-2" /> Edit
+      </button>
+
+      <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
+
       <!-- Cut (only when items are selected) -->
-      <button v-if="hasSelection" @click="cutSelected(); closeContextMenu()" 
+      <button v-if="hasSelection" @click="cutSelected(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <ContentCutIcon :size="18" class="mr-2" /> Cut
       </button>
-      
+
       <!-- Copy (only when items are selected) -->
-      <button v-if="hasSelection" @click="copySelected(); closeContextMenu()" 
+      <button v-if="hasSelection" @click="copySelected(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <ContentCopyIcon :size="18" class="mr-2" /> Copy
       </button>
-      
+
       <!-- Paste (always available if clipboard has content) -->
-      <button @click="pasteItems(); closeContextMenu()" 
+      <button @click="pasteItems(); closeContextMenu()"
         :disabled="!clipboard.type"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center">
         <ContentPasteIcon :size="18" class="mr-2" /> Paste
       </button>
-      
-      <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
-      
+
+      <div class="border-t border-gray-200 my-1"></div>
+
       <!-- New (always available) -->
       <div class="relative group">
         <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
@@ -615,44 +681,138 @@ function getFileIconColor(node: FSNode) {
           <span class="text-xs text-gray-600">▶</span>
         </button>
         <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
-          <button @click="createFile(); closeContextMenu()" 
+          <button @click="createFile(); closeContextMenu()"
             class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
             <FileDocumentOutlineIcon :size="18" class="mr-2" /> Text Document
           </button>
-          <button @click="createDirectory(); closeContextMenu()" 
+          <button @click="createDirectory(); closeContextMenu()"
             class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
             <FolderPlusIcon :size="18" class="mr-2" /> Folder
           </button>
         </div>
       </div>
-      
+
       <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
-      
+
+      <!-- Print (only when single file is selected) -->
+      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="printItem(); closeContextMenu()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <FileDocumentIcon :size="18" class="mr-2" /> Print
+      </button>
+
+      <!-- Send to (submenu) -->
+      <div v-if="hasSelection" class="relative group">
+        <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
+          <ContentCopyIcon :size="18" class="mr-2" /> Send to
+          <span class="text-xs text-gray-600">▶</span>
+        </button>
+        <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
+          <button @click="sendToDesktop(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FolderOpenIcon :size="18" class="mr-2" /> Desktop (create shortcut)
+          </button>
+          <button @click="sendToDocuments(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FolderOpenIcon :size="18" class="mr-2" /> Documents
+          </button>
+        </div>
+      </div>
+
+      <!-- Create shortcut (only when single item is selected) -->
+      <button v-if="hasSingleSelection" @click="createShortcut(); closeContextMenu()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <LinkIcon :size="18" class="mr-2" /> Create shortcut
+      </button>
+
+      <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
+
       <!-- Rename (only when single item is selected) -->
-      <button v-if="hasSingleSelection" @click="renameItem(); closeContextMenu()" 
+      <button v-if="hasSingleSelection" @click="renameItem(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <PencilIcon :size="18" class="mr-2" /> Rename
       </button>
-      
+
       <!-- Delete (only when items are selected) -->
-      <button v-if="hasSelection" @click="deleteSelected(); closeContextMenu()" 
+      <button v-if="hasSelection" @click="deleteSelected(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-red-600 flex items-center">
         <DeleteIcon :size="18" class="mr-2" /> Delete
       </button>
-      
+
       <div class="border-t border-gray-200 my-1"></div>
-      
+
+      <!-- View (submenu) -->
+      <div class="relative group">
+        <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
+          <EyeOutlineIcon :size="18" class="mr-2" /> View
+          <span class="text-xs text-gray-600">▶</span>
+        </button>
+        <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
+          <button @click="viewMode = 'icons'; closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FolderOpenIcon :size="18" class="mr-2" /> Icons
+          </button>
+          <button @click="viewMode = 'list'; closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <EyeOutlineIcon :size="18" class="mr-2" /> List
+          </button>
+          <button @click="viewMode = 'details'; closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentIcon :size="18" class="mr-2" /> Details
+          </button>
+        </div>
+      </div>
+
+      <!-- Sort by (submenu) -->
+      <div class="relative group">
+        <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
+          <ArrowUpBoldIcon :size="18" class="mr-2" /> Sort by
+          <span class="text-xs text-gray-600">▶</span>
+        </button>
+        <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
+          <button @click="sortByName(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentIcon :size="18" class="mr-2" /> Name
+          </button>
+          <button @click="sortByDate(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentIcon :size="18" class="mr-2" /> Date modified
+          </button>
+          <button @click="sortByType(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentIcon :size="18" class="mr-2" /> Type
+          </button>
+          <button @click="sortBySize(); closeContextMenu()"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentIcon :size="18" class="mr-2" /> Size
+          </button>
+        </div>
+      </div>
+
+      <!-- Refresh -->
+      <button @click="refreshDirectory(); closeContextMenu()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <CogIcon :size="18" class="mr-2" /> Refresh
+      </button>
+
+      <div class="border-t border-gray-200 my-1"></div>
+
+      <!-- Open with (only when single file is selected) -->
+      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="openWith(); closeContextMenu()"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <CloseIcon :size="18" class="mr-2" /> Open with
+      </button>
+
       <!-- Select All (only when there are items to select) -->
-      <button @click="selectAll(); closeContextMenu()" 
+      <button @click="selectAll(); closeContextMenu()"
         :disabled="sortedNodes.length === 0"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center">
         <CheckboxMarkedOutlineIcon :size="18" class="mr-2" /> Select All
       </button>
-      
+
       <div v-if="hasSingleSelection" class="border-t border-gray-200 my-1"></div>
-      
+
       <!-- Properties (only when single item is selected) -->
-      <button v-if="hasSingleSelection" @click="showProperties(); closeContextMenu()" 
+      <button v-if="hasSingleSelection" @click="showProperties(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <CogIcon :size="18" class="mr-2" /> Properties
       </button>
