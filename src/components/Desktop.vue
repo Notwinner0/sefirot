@@ -121,8 +121,8 @@ async function initializeDesktop() {
 
 function setupEventListeners() {
   document.addEventListener('click', closeContextMenu);
-  document.addEventListener('selectstart', preventTextSelection);
-  document.addEventListener('mousedown', preventTextSelection);
+  // document.addEventListener('selectstart', preventTextSelection);
+  // document.addEventListener('mousedown', preventTextSelection);
 }
 
 function cleanupEventListeners() {

@@ -349,7 +349,19 @@ export function useWindowsFS() {
       }
   }
 
-  return { initializeDrive, exists, writeFile, readFile, mkdir, readdir, rm, rmdir, move, copy, createSymlink, resolveSymlink };
+  /**
+   * Retrieves metadata for a file or directory.
+   * @param path - The path of the item.
+   * @returns An FSNode object or undefined if not found.
+   */
+  async function stat(path: string): Promise<FSNode | undefined> {
+    const db = await dbPromise;
+    const normalizedPath = normalizePath(path);
+    const entry = await db.get("nodes", normalizedPath);
+    return entry as FSNode | undefined;
+  }
+
+  return { initializeDrive, exists, writeFile, readFile, mkdir, readdir, rm, rmdir, move, copy, createSymlink, resolveSymlink, stat };
 }
 
 // --- Helper Functions ---

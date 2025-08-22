@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, nextTick } from "vue";
 import { useWindowsFS } from "../composables/useFS";
 import { useWindowsStore } from "../stores/windows";
 import { useEventBus } from "../composables/useEventBus";
@@ -29,6 +29,11 @@ const nodes = ref<FSNode[]>([]);
 const selectedItems = ref<Set<string>>(new Set());
 const viewMode = ref<'details' | 'list' | 'icons'>('details');
 const showHidden = ref(false);
+
+const isEditingAddress = ref(false);
+const editableAddress = ref("");
+const addressInput = ref<HTMLInputElement | null>(null);
+const addressBarRef = ref<HTMLDivElement | null>(null);
 
 // Context menu state
 const contextMenu = ref<{
@@ -70,6 +75,7 @@ onMounted(async () => {
   
   // Close context menu when clicking outside
   document.addEventListener('click', closeContextMenu);
+  document.addEventListener('click', handleClickOutsideAddressBar);
 });
 
 function navigate(node: FSNode) {
@@ -128,6 +134,12 @@ function showContextMenu(event: MouseEvent, node?: FSNode) {
 
 function closeContextMenu() {
   contextMenu.value.show = false;
+}
+
+function handleClickOutsideAddressBar(event: MouseEvent) {
+  if (isEditingAddress.value && addressBarRef.value && !addressBarRef.value.contains(event.target as Node)) {
+    stopEditingAddress();
+  }
 }
 
 function getSelectedNodes(): FSNode[] {
@@ -331,6 +343,32 @@ function goHome() {
   loadDirectory("C:\\");
 }
 
+function startEditingAddress() {
+  isEditingAddress.value = true;
+  editableAddress.value = currentPath.value;
+  nextTick(() => {
+    addressInput.value?.focus();
+  });
+}
+
+function stopEditingAddress() {
+  isEditingAddress.value = false;
+}
+
+async function handleAddressChange() {
+  try {
+    const stats = await fs.stat(editableAddress.value);
+    if (stats && stats.type === 'directory') {
+      loadDirectory(editableAddress.value);
+      isEditingAddress.value = false;
+    } else {
+      alert(`Error: Path is not a directory '${editableAddress.value}'.`);
+    }
+  } catch (error) {
+    alert(`Error: Path not found '${editableAddress.value}'.`);
+  }
+}
+
 const sortedNodes = computed(() => {
   return [...nodes.value].sort((a, b) => {
     // Directories first, then files
@@ -390,11 +428,18 @@ function getFileIcon(node: FSNode) {
     </div>
 
     <!-- Address Bar -->
-    <div class="bg-gray-50 border-b border-gray-300 p-2">
+<div class="bg-gray-50 border-b border-gray-300 p-2">
       <div class="flex items-center space-x-2">
         <span class="text-sm font-medium text-gray-800">Address:</span>
-        <div class="flex-1 bg-white border border-gray-300 rounded px-2 py-1">
-          <span class="text-sm font-mono text-gray-900">{{ currentPath }}</span>
+        <div class="flex-1 bg-white border border-gray-300 rounded px-2 py-1" @click="startEditingAddress" ref="addressBarRef">
+          <input
+            v-if="isEditingAddress"
+            ref="addressInput"
+            v-model="editableAddress"
+            @keydown.enter="handleAddressChange"
+            class="w-full text-sm font-mono text-gray-900 bg-transparent outline-none"
+          />
+          <span v-else class="text-sm font-mono text-gray-900">{{ currentPath }}</span>
         </div>
       </div>
     </div>
