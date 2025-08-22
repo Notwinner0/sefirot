@@ -114,6 +114,11 @@ export const useWindowsStore = defineStore("windows", {
         window.isMinimized = false;
       }
     },
+    minimizeAll() {
+      this.windows.forEach(w => {
+        w.isMinimized = true;
+      });
+    },
     focusWindow(id: string) {
       const window = this.windows.find(w => w.id === id);
       if (window) {
