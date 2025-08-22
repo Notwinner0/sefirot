@@ -21,6 +21,6 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["bun-types", "jest"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "test/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/shims-vue-material-design-icons.d.ts", "test/**/*.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -3,6 +3,14 @@ import { useWindowsStore } from "../stores/windows";
 import FileExplorer from "./FileExplorer.vue";
 import { ref, onMounted, onUnmounted } from "vue";
 
+// Import Icons
+import { 
+  CloseIcon, 
+  WindowMinimizeIcon, 
+  WindowMaximizeIcon, 
+  WindowRestoreIcon 
+} from '../icons';
+
 const windows = useWindowsStore();
 const draggingWindow = ref<string | null>(null);
 const resizingWindow = ref<string | null>(null);
@@ -124,19 +132,25 @@ const onMouseUp = () => {
         <div class="flex space-x-1">
           <button 
             @click="windows.minimizeWindow(w.id)" 
-            class="hover:bg-gray-700 px-1 rounded text-xs"
+            class="hover:bg-gray-700 px-1 rounded text-xs flex items-center justify-center"
             title="Minimize"
-          >─</button>
+          >
+            <WindowMinimizeIcon :size="16" fillColor="#FFFFFF" />
+          </button>
           <button 
             @click="windows.maximizeWindow(w.id)" 
-            class="hover:bg-gray-700 px-1 rounded text-xs"
+            class="hover:bg-gray-700 px-1 rounded text-xs flex items-center justify-center"
             :title="w.isMaximized ? 'Restore' : 'Maximize'"
-          >{{ w.isMaximized ? '❐' : '⬜' }}</button>
+          >
+            <component :is="w.isMaximized ? WindowRestoreIcon : WindowMaximizeIcon" :size="16" fillColor="#FFFFFF" />
+          </button>
           <button 
             @click="windows.closeApp(w.id)" 
-            class="hover:bg-red-600 px-1 rounded text-xs"
+            class="hover:bg-red-600 px-1 rounded text-xs flex items-center justify-center"
             title="Close"
-          >✖</button>
+          >
+            <CloseIcon :size="16" fillColor="#FFFFFF" />
+          </button>
         </div>
       </div>
 

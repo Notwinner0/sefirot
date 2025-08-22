@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { useWindowsStore } from "../stores/windows";
+import {
+  FolderOpenIcon,
+  CloseIcon,
+  WindowMinimizeIcon
+} from '../icons';
 
 const windows = useWindowsStore();
 </script>
@@ -16,19 +21,21 @@ const windows = useWindowsStore();
         'bg-gray-800': w.isMinimized
       }"
     >
-      <span class="text-xs">📁</span>
+      <FolderOpenIcon :size="16" fillColor="#FFFFFF" />
       <span>{{ w.title }}</span>
       <button 
         @click.stop="windows.closeApp(w.id)"
-        class="ml-2 hover:bg-red-600 px-1 rounded text-xs"
-      >✖</button>
+        class="ml-2 hover:bg-red-600 px-1 rounded text-xs flex items-center justify-center"
+      >
+        <CloseIcon :size="16" fillColor="#FFFFFF" />
+      </button>
     </div>
     <div class="ml-auto h-full flex items-center">
       <button 
         @click="windows.minimizeAll()"
-        class="h-full w-1 hover:bg-gray-700 flex items-center justify-center text-sm border-l border-gray-700"
+        class="h-full w-10 hover:bg-gray-700 flex items-center justify-center text-sm border-l border-gray-700"
       >
-        <span class="text-xs">|</span>
+        <WindowMinimizeIcon :size="16" fillColor="#FFFFFF" />
       </button>
     </div>
   </div>

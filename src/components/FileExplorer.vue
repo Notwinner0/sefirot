@@ -4,6 +4,30 @@ import { useWindowsFS } from "../composables/useFS";
 import { useWindowsStore } from "../stores/windows";
 import { useEventBus } from "../composables/useEventBus";
 
+// Import Icons
+import {
+  FolderOpenIcon,
+  LinkIcon,
+  FileDocumentIcon,
+  OpenInNewIcon,
+  ContentCutIcon,
+  ContentCopyIcon,
+  ContentPasteIcon,
+  FileDocumentOutlineIcon,
+  FolderPlusIcon,
+  PencilIcon,
+  DeleteIcon,
+  CheckboxMarkedOutlineIcon,
+  CheckboxBlankOutlineIcon,
+  CogIcon,
+  EyeOutlineIcon,
+  ArrowUpBoldIcon,
+  HomeIcon
+} from '../icons';
+
+// Import icon utilities
+import { getIconColorForFile, getIconForFile } from '../utils/iconColors';
+
 interface FSNode {
   path: string;
   parent: string;
@@ -386,12 +410,22 @@ function formatDate(date: Date) {
 
 function getFileIcon(node: FSNode) {
   if (node.type === 'directory') {
-    return '📁';
+    return FolderOpenIcon;
   } else if (node.type === 'symlink') {
-    return '🔗';
+    return LinkIcon;
   }
-  // You could add more file type icons here
-  return '📄';
+  // Use the centralized icon system that returns actual Vue components
+  return getIconForFile(node.name);
+}
+
+function getFileIconColor(node: FSNode) {
+  if (node.type === 'directory') {
+    return '#FFCA28'; // Amber for folders
+  } else if (node.type === 'symlink') {
+    return '#03A9F4'; // Light Blue for symlinks
+  }
+  // Use the centralized color system for files
+  return getIconColorForFile(node.name);
 }
 </script>
 
@@ -400,25 +434,25 @@ function getFileIcon(node: FSNode) {
     <!-- Toolbar -->
     <div class="bg-gray-100 border-b border-gray-300 p-2 flex items-center space-x-2">
       <button @click="goUp" :disabled="!parentPath" 
-        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-800">
-        ↑ Up
+        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-800 flex items-center">
+        <ArrowUpBoldIcon :size="16" fillColor="#606060" class="mr-1" /> Up
       </button>
       <button @click="goHome" 
-        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800">
-        🏠 Home
+        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800 flex items-center">
+        <HomeIcon :size="16" fillColor="#606060" class="mr-1" /> Home
       </button>
       <div class="w-px h-6 bg-gray-300"></div>
       <button @click="createFile" 
-        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800">
-        📄 New File
+        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800 flex items-center">
+        <FileDocumentOutlineIcon :size="16" fillColor="#606060" class="mr-1" /> New File
       </button>
       <button @click="createDirectory" 
-        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800">
-        📁 New Folder
+        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800 flex items-center">
+        <FolderPlusIcon :size="16" fillColor="#606060" class="mr-1" /> New Folder
       </button>
       <button @click="deleteSelected" :disabled="selectedItems.size === 0"
-        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-800">
-        🗑️ Delete
+        class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-800 flex items-center">
+        <DeleteIcon :size="16" fillColor="#606060" class="mr-1" /> Delete
       </button>
       <div class="w-px h-6 bg-gray-300"></div>
       <label class="flex items-center space-x-1 text-sm text-gray-800">
@@ -481,7 +515,7 @@ function getFileIcon(node: FSNode) {
               :class="['border-b border-gray-100 hover:bg-blue-50 cursor-pointer', 
                 selectedItems.has(node.path) ? 'bg-blue-100' : '']">
               <td class="p-2 flex items-center">
-                <span class="mr-2">{{ getFileIcon(node) }}</span>
+                <component :is="getFileIcon(node)" :size="20" :fillColor="getFileIconColor(node)" class="mr-2" />
                 <span class="font-medium text-gray-900">{{ node.name }}</span>
               </td>
               <td class="p-2 text-gray-700">{{ formatDate(node.modifiedAt) }}</td>
@@ -507,7 +541,7 @@ function getFileIcon(node: FSNode) {
             @contextmenu="showContextMenu($event, node)"
             :class="['p-2 rounded hover:bg-blue-50 cursor-pointer flex items-center', 
               selectedItems.has(node.path) ? 'bg-blue-100' : '']">
-            <span class="mr-2">{{ getFileIcon(node) }}</span>
+            <component :is="getFileIcon(node)" :size="20" :fillColor="getFileIconColor(node)" class="mr-2" />
             <span class="font-medium text-gray-900">{{ node.name }}</span>
           </div>
         </div>
@@ -522,7 +556,9 @@ function getFileIcon(node: FSNode) {
             @contextmenu="showContextMenu($event, node)"
             :class="['p-3 rounded hover:bg-blue-50 cursor-pointer text-center', 
               selectedItems.has(node.path) ? 'bg-blue-100' : '']">
-            <div class="text-3xl mb-2">{{ getFileIcon(node) }}</div>
+            <div class="text-3xl mb-2">
+              <component :is="getFileIcon(node)" :size="32" :fillColor="getFileIconColor(node)" />
+            </div>
             <div class="text-xs font-medium break-words text-gray-900">{{ node.name }}</div>
           </div>
         </div>
@@ -531,7 +567,9 @@ function getFileIcon(node: FSNode) {
       <!-- Empty State -->
       <div v-if="sortedNodes.length === 0" class="flex items-center justify-center h-full text-gray-600">
         <div class="text-center">
-          <div class="text-4xl mb-2">📁</div>
+          <div class="text-4xl mb-2">
+            <FolderOpenIcon :size="48" fillColor="#FFCA28" />
+          </div>
           <div class="text-gray-700">This folder is empty</div>
         </div>
       </div>
@@ -551,21 +589,21 @@ function getFileIcon(node: FSNode) {
       
       <!-- Cut (only when items are selected) -->
       <button v-if="hasSelection" @click="cutSelected(); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-        ✂️ Cut
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <ContentCutIcon :size="18" class="mr-2" /> Cut
       </button>
       
       <!-- Copy (only when items are selected) -->
       <button v-if="hasSelection" @click="copySelected(); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-        📋 Copy
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <ContentCopyIcon :size="18" class="mr-2" /> Copy
       </button>
       
       <!-- Paste (always available if clipboard has content) -->
       <button @click="pasteItems(); closeContextMenu()" 
         :disabled="!clipboard.type"
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800">
-        📋 Paste
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center">
+        <ContentPasteIcon :size="18" class="mr-2" /> Paste
       </button>
       
       <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
@@ -573,17 +611,17 @@ function getFileIcon(node: FSNode) {
       <!-- New (always available) -->
       <div class="relative group">
         <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
-          📄 New
+          <FileDocumentOutlineIcon :size="18" class="mr-2" /> New
           <span class="text-xs text-gray-600">▶</span>
         </button>
         <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
           <button @click="createFile(); closeContextMenu()" 
-            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-            📄 Text Document
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FileDocumentOutlineIcon :size="18" class="mr-2" /> Text Document
           </button>
           <button @click="createDirectory(); closeContextMenu()" 
-            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-            📁 Folder
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+            <FolderPlusIcon :size="18" class="mr-2" /> Folder
           </button>
         </div>
       </div>
@@ -592,14 +630,14 @@ function getFileIcon(node: FSNode) {
       
       <!-- Rename (only when single item is selected) -->
       <button v-if="hasSingleSelection" @click="renameItem(); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-        ✏️ Rename
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <PencilIcon :size="18" class="mr-2" /> Rename
       </button>
       
       <!-- Delete (only when items are selected) -->
       <button v-if="hasSelection" @click="deleteSelected(); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-red-600">
-        🗑️ Delete
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-red-600 flex items-center">
+        <DeleteIcon :size="18" class="mr-2" /> Delete
       </button>
       
       <div class="border-t border-gray-200 my-1"></div>
@@ -607,16 +645,16 @@ function getFileIcon(node: FSNode) {
       <!-- Select All (only when there are items to select) -->
       <button @click="selectAll(); closeContextMenu()" 
         :disabled="sortedNodes.length === 0"
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800">
-        ☑️ Select All
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center">
+        <CheckboxMarkedOutlineIcon :size="18" class="mr-2" /> Select All
       </button>
       
       <div v-if="hasSingleSelection" class="border-t border-gray-200 my-1"></div>
       
       <!-- Properties (only when single item is selected) -->
       <button v-if="hasSingleSelection" @click="showProperties(); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800">
-        ⚙️ Properties
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
+        <CogIcon :size="18" class="mr-2" /> Properties
       </button>
     </div>
   </div>

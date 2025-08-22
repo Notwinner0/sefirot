@@ -4,6 +4,28 @@ import { useWindowsFS } from "../composables/useFS";
 import { ref, onMounted, computed, onUnmounted, reactive } from "vue";
 import { useEventBus } from "../composables/useEventBus";
 
+// Import Icons
+import { 
+  FolderOpenIcon, 
+  LinkIcon, 
+  FileDocumentIcon, 
+  OpenInNewIcon,
+  ContentCutIcon,
+  ContentCopyIcon,
+  ContentPasteIcon,
+  FileDocumentOutlineIcon,
+  FolderPlusIcon,
+  PencilIcon,
+  DeleteIcon,
+  CheckboxMarkedOutlineIcon,
+  CheckboxBlankOutlineIcon,
+  CogIcon,
+  EyeOutlineIcon
+} from '../icons';
+
+// Import icon utilities
+import { getIconColorForFile, getIconForFile } from '../utils/iconColors';
+
 // Types
 interface FSNode {
   path: string;
@@ -538,9 +560,20 @@ function openFileExplorer() {
 
 function getFileIcon(node: FSNode) {
   switch (node.type) {
-    case 'directory': return '📁';
-    case 'symlink': return '🔗';
-    default: return '📄';
+    case 'directory': return FolderOpenIcon;
+    case 'symlink': return LinkIcon;
+    default: return getIconForFile(node.name);
+  }
+}
+
+function getFileColor(node: FSNode) {
+  switch (node.type) {
+    case 'directory': return '#FFCA28'; // Amber for folders
+    case 'symlink': return '#03A9F4'; // Light Blue for symlinks
+    case 'file':
+      // Use the centralized color system for files
+      return getIconColorForFile(node.name);
+    default: return '#FFFFFF'; // Default white
   }
 }
 
@@ -579,7 +612,7 @@ function selectAll() {
         top: item.desktopY + 'px'
       }"
     >
-      <div :class="`${iconSize} mb-1`">{{ getFileIcon(item) }}</div>
+      <component :is="getFileIcon(item)" :size="iconSize === 'text-4xl' ? 48 : 32" :fillColor="getFileColor(item)" class="mb-1" />
       <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
         {{ item.name }}
       </div>
@@ -592,7 +625,7 @@ function selectAll() {
       class="absolute w-20 h-20 p-2 rounded hover:bg-white/10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center"
       style="left: 16px; top: 16px;"
     >
-      <div :class="`${iconSize} mb-1`">🔗</div>
+      <LinkIcon :size="iconSize === 'text-4xl' ? 48 : 32" fillColor="#03A9F4" class="mb-1" />
       <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
         File Explorer
       </div>
@@ -620,9 +653,9 @@ function selectAll() {
       <button 
         v-if="hasSingleSelection" 
         @click="openItem(contextMenu.target!); closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        ▶️ Open
+        <OpenInNewIcon :size="18" class="mr-2" /> Open
       </button>
       
       <div v-if="hasSelection" class="border-t border-gray-200 my-1" />
@@ -631,26 +664,26 @@ function selectAll() {
       <button 
         v-if="hasSelection" 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        ✂️ Cut
+        <ContentCutIcon :size="18" class="mr-2" /> Cut
       </button>
       
       <!-- Copy -->
       <button 
         v-if="hasSelection" 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        📋 Copy
+        <ContentCopyIcon :size="18" class="mr-2" /> Copy
       </button>
       
       <!-- Paste -->
       <button 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        📋 Paste
+        <ContentPasteIcon :size="18" class="mr-2" /> Paste
       </button>
       
       <div v-if="hasSelection" class="border-t border-gray-200 my-1" />
@@ -658,21 +691,21 @@ function selectAll() {
       <!-- New -->
       <div class="relative group">
         <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
-          📄 New
+          <FileDocumentOutlineIcon :size="18" class="mr-2" /> New
           <span class="text-xs text-gray-600">▶</span>
         </button>
         <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
           <button 
             @click="createFile(); closeContextMenu()" 
-            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
           >
-            📄 Text Document
+            <FileDocumentOutlineIcon :size="18" class="mr-2" /> Text Document
           </button>
           <button 
             @click="createDirectory(); closeContextMenu()" 
-            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+            class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
           >
-            📁 Folder
+            <FolderPlusIcon :size="18" class="mr-2" /> Folder
           </button>
         </div>
       </div>
@@ -683,18 +716,18 @@ function selectAll() {
       <button 
         v-if="hasSingleSelection" 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        ✏️ Rename
+        <PencilIcon :size="18" class="mr-2" /> Rename
       </button>
       
       <!-- Delete -->
       <button 
         v-if="hasSelection" 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-red-600"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-red-600 flex items-center"
       >
-        🗑️ Delete
+        <DeleteIcon :size="18" class="mr-2" /> Delete
       </button>
       
       <div class="border-t border-gray-200 my-1" />
@@ -703,9 +736,9 @@ function selectAll() {
       <button 
         @click="selectAll()" 
         :disabled="desktopItems.length === 0"
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center"
       >
-        ☑️ Select All
+        <CheckboxMarkedOutlineIcon :size="18" class="mr-2" /> Select All
       </button>
       
       <div v-if="hasSingleSelection" class="border-t border-gray-200 my-1" />
@@ -714,9 +747,9 @@ function selectAll() {
       <button 
         v-if="hasSingleSelection" 
         @click="closeContextMenu()" 
-        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800"
+        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center"
       >
-        ⚙️ Properties
+        <CogIcon :size="18" class="mr-2" /> Properties
       </button>
       
       <div class="border-t border-gray-200 my-1" />
@@ -724,7 +757,7 @@ function selectAll() {
       <!-- View -->
       <div class="relative group">
         <button class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex justify-between items-center text-gray-800">
-          👁️ View
+          <EyeOutlineIcon :size="18" class="mr-2" /> View
           <span class="text-xs text-gray-600">▶</span>
         </button>
         <div class="absolute left-full top-0 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-32 hidden group-hover:block">
@@ -732,7 +765,7 @@ function selectAll() {
             @click="toggleGrid()" 
             class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center text-gray-800"
           >
-            <span class="mr-2">{{ isGridEnabled ? '☑' : '☐' }}</span>
+            <component :is="isGridEnabled ? CheckboxMarkedOutlineIcon : CheckboxBlankOutlineIcon" :size="18" class="mr-2" />
             Grid
           </button>
         </div>
