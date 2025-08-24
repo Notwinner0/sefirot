@@ -533,7 +533,11 @@ function openFileExplorer() {
 function getFileIcon(node: FSNode) {
   switch (node.type) {
     case 'directory': return FolderOpenIcon;
-    case 'symlink': return LinkIcon;
+    case 'symlink': 
+      if (node.target === "fileexplorer://") {
+        return FolderOpenIcon; // Use FolderOpenIcon for File Explorer symlink
+      }
+      return LinkIcon; // Keep LinkIcon for other symlinks
     default: return getIconForFile(node.name);
   }
 }
@@ -557,6 +561,13 @@ function selectAll() {
 function refreshDesktop() {
   loadDesktopItems();
   closeContextMenu();
+}
+
+function getDisplayName(item: FSNode): string {
+  if (item.type === 'symlink' && item.name.endsWith('.lnk')) {
+    return item.name.slice(0, -4); // Remove .lnk extension
+  }
+  return item.name;
 }
 </script>
 
@@ -589,9 +600,17 @@ function refreshDesktop() {
         top: item.desktopY + 'px'
       }"
     >
-      <component :is="getFileIcon(item)" :size="iconSize === 'text-4xl' ? 48 : 32" :fillColor="getFileColor(item)" class="mb-1" />
+      <div class="relative">
+        <component :is="getFileIcon(item)" :size="iconSize === 'text-4xl' ? 48 : 32" :fillColor="getFileColor(item)" class="mb-1" />
+        <LinkIcon 
+          v-if="item.type === 'symlink'" 
+          :size="16" 
+          fillColor="#FFFFFF" 
+          class="absolute bottom-0 left-0 -mb-1 -ml-1 bg-blue-500 rounded-full p-0.5" 
+        />
+      </div>
       <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
-        {{ item.name }}
+        {{ getDisplayName(item) }}
       </div>
     </div>
     
@@ -602,7 +621,7 @@ function refreshDesktop() {
       class="absolute w-20 h-20 p-2 rounded hover:bg-white/10 cursor-pointer text-center transition-colors flex flex-col justify-center items-center"
       style="left: 16px; top: 16px;"
     >
-      <LinkIcon :size="iconSize === 'text-4xl' ? 48 : 32" fillColor="#03A9F4" class="mb-1" />
+      <FolderOpenIcon :size="iconSize === 'text-4xl' ? 48 : 32" fillColor="#FFCA28" class="mb-1" />
       <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
         File Explorer
       </div>
