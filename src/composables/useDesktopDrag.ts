@@ -187,6 +187,12 @@ export function useDesktopDrag() {
       selectionBox.visible = false;
     }
 
+    // Reset isMoving if it's still true (handles double-click case where hasMoved is false)
+    if (isMoving.value) {
+      isMoving.value = false;
+      dragState.item = null;
+    }
+
     // Defer resetting hasMoved to prevent click event after drag
     setTimeout(() => {
       hasMoved.value = false;

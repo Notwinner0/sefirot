@@ -2,8 +2,14 @@
 import { ref, onMounted, computed, nextTick } from "vue";
 import { useWindowsFS } from "../composables/useFS";
 import { useWindowsStore } from "../stores/windows";
-import { useEventBus } from "../composables/useEventBus";
+
 import { useContextMenu } from "../composables/useContextMenu";
+
+// Import new composables
+import { useFileOperations } from "../composables/useFileOperations";
+import { useFileSorting } from "../composables/useFileSorting";
+import { useFileSelection } from "../composables/useFileSelection";
+import { useNotifications } from "../composables/useNotifications";
 
 // Import Icons
 import {
@@ -19,7 +25,6 @@ import {
   PencilIcon,
   DeleteIcon,
   CheckboxMarkedOutlineIcon,
-  CheckboxBlankOutlineIcon,
   CogIcon,
   EyeOutlineIcon,
   ArrowUpBoldIcon,
@@ -49,19 +54,19 @@ const props = defineProps<{
   initialPath?: string;
 }>();
 
+// Core state
 const fs = useWindowsFS();
 const currentPath = ref("C:\\");
 const nodes = ref<FSNode[]>([]);
-const selectedItems = ref<Set<string>>(new Set());
 const viewMode = ref<'details' | 'list' | 'icons'>('details');
 const showHidden = ref(false);
+const isLoading = ref(false);
 
+// Address bar state
 const isEditingAddress = ref(false);
 const editableAddress = ref("");
 const addressInput = ref<HTMLInputElement | null>(null);
 const addressBarRef = ref<HTMLDivElement | null>(null);
-
-const { contextMenu, showContextMenu, closeContextMenu, forceCloseAllMenus } = useContextMenu('FileExplorer');
 
 // Clipboard for cut/copy operations
 const clipboard = ref<{
@@ -72,15 +77,34 @@ const clipboard = ref<{
   items: []
 });
 
+// Initialize composables
+const { contextMenu, showContextMenu, closeContextMenu } = useContextMenu('FileExplorer');
+const fileOps = useFileOperations();
+const { setSortField, sortedNodes } = useFileSorting();
+const {
+  selectedCount,
+  hasSelection,
+  hasSingleSelection,
+  selectItem,
+  selectAll,
+  clearSelection,
+  isSelected,
+  getSelectedNodes
+} = useFileSelection();
+const { error: showError, success: showSuccess } = useNotifications();
+
 async function loadDirectory(path: string) {
+  isLoading.value = true;
   try {
     const allNodes = await fs.readdir(path);
     nodes.value = allNodes.filter(node => showHidden.value || !node.attributes.hidden);
     currentPath.value = path;
-    selectedItems.value.clear();
+    clearSelection();
   } catch (error) {
     console.error(`Failed to read directory '${path}':`, error);
-    alert(`Error: Could not load directory '${path}'.`);
+    showError('Failed to Load Directory', `Could not load directory '${path}'.`);
+  } finally {
+    isLoading.value = false;
   }
 }
 
@@ -102,29 +126,12 @@ function navigate(node: FSNode) {
       const windows = useWindowsStore();
       windows.openApp("File Explorer", { type: "component", name: "FileExplorer" });
     } else {
-      alert(`Opening symlink: ${node.name} -> ${node.target}`);
+      showError('Symlink Navigation', `Opening symlink: ${node.name} -> ${node.target}`);
     }
   } else {
-    alert(`Opening file: ${node.name}`);
+    showError('File Opening', `Opening file: ${node.name}\n(This is a placeholder - file opening not implemented)`);
   }
 }
-
-function selectItem(node: FSNode, event: MouseEvent) {
-  if (event.ctrlKey) {
-    // Multi-select with Ctrl
-    if (selectedItems.value.has(node.path)) {
-      selectedItems.value.delete(node.path);
-    } else {
-      selectedItems.value.add(node.path);
-    }
-  } else {
-    // Single select
-    selectedItems.value.clear();
-    selectedItems.value.add(node.path);
-  }
-}
-
-
 
 function handleClickOutsideAddressBar(event: MouseEvent) {
   if (isEditingAddress.value && addressBarRef.value && !addressBarRef.value.contains(event.target as Node)) {
@@ -132,169 +139,118 @@ function handleClickOutsideAddressBar(event: MouseEvent) {
   }
 }
 
-function getSelectedNodes(): FSNode[] {
-  return nodes.value.filter(node => selectedItems.value.has(node.path));
-}
-
-// Check if context menu should show item-specific options
-const hasSelection = computed(() => selectedItems.value.size > 0);
-const hasSingleSelection = computed(() => selectedItems.value.size === 1);
-const hasMultipleSelection = computed(() => selectedItems.value.size > 1);
-
 async function createFile() {
   const name = prompt("Enter new file name:");
-  if (name) {
-    const filePath = `${currentPath.value}\\${name}`;
-    try {
-      await fs.writeFile(filePath, new ArrayBuffer(0));
-      await loadDirectory(currentPath.value);
-    } catch (error) {
-      console.error(`Failed to create file '${filePath}':`, error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Could not create file.'}`);
-    }
+  if (!name?.trim()) return;
+
+  const result = await fileOps.createFile(currentPath.value, name.trim());
+  if (result.success) {
+    showSuccess('File Created', `Successfully created file '${name}'`);
+    await loadDirectory(currentPath.value);
+  } else {
+    showError('Failed to Create File', result.error || 'Unknown error occurred');
   }
 }
 
-const eventBus = useEventBus();
-
 async function createDirectory() {
   const name = prompt("Enter new directory name:");
-  if (name) {
-    const dirPath = `${currentPath.value}\\${name}`;
-    try {
-      await fs.mkdir(dirPath);
-      await loadDirectory(currentPath.value);
-      if (currentPath.value === "C:\\System\\Desktop") {
-        eventBus.emit('desktop-refresh');
-      }
-    } catch (error) {
-      console.error(`Failed to create directory '${dirPath}':`, error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Could not create directory.'}`);
-    }
+  if (!name?.trim()) return;
+
+  const result = await fileOps.createDirectory(currentPath.value, name.trim());
+  if (result.success) {
+    showSuccess('Directory Created', `Successfully created directory '${name}'`);
+    await loadDirectory(currentPath.value);
+  } else {
+    showError('Failed to Create Directory', result.error || 'Unknown error occurred');
   }
 }
 
 async function deleteSelected() {
-  if (selectedItems.value.size === 0) return;
-  
-  if (confirm(`Delete ${selectedItems.value.size} item(s)?`)) {
-    for (const path of selectedItems.value) {
-      try {
-        const node = nodes.value.find(n => n.path === path);
-        if (node) {
-          if (node.type === 'directory') {
-            await fs.rmdir(node.path, true);
-          } else {
-            await fs.rm(node.path);
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to delete '${path}':`, error);
-      }
+  if (!hasSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  if (confirm(`Delete ${selectedNodes.length} item(s)? This action cannot be undone.`)) {
+    const paths = selectedNodes.map(node => node.path);
+    const result = await fileOps.deleteItems(paths);
+
+    if (result.success) {
+      showSuccess('Items Deleted', `Successfully deleted ${selectedNodes.length} item(s)`);
+      await loadDirectory(currentPath.value);
+    } else {
+      showError('Failed to Delete Items', result.error || 'Unknown error occurred');
     }
-    await loadDirectory(currentPath.value);
   }
 }
 
 async function cutSelected() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 0) return;
-  
+  if (!hasSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
   clipboard.value = {
     type: 'cut',
     items: selectedNodes
   };
+  showSuccess('Items Cut', `${selectedNodes.length} item(s) cut to clipboard`);
 }
 
 async function copySelected() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 0) return;
-  
+  if (!hasSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
   clipboard.value = {
     type: 'copy',
     items: selectedNodes
   };
+  showSuccess('Items Copied', `${selectedNodes.length} item(s) copied to clipboard`);
 }
 
 async function pasteItems() {
   if (!clipboard.value.type || clipboard.value.items.length === 0) return;
-  
-  for (const item of clipboard.value.items) {
-    try {
-      const newName = clipboard.value.type === 'copy' ? 
-        `${item.name} - Copy` : item.name;
-      const newPath = `${currentPath.value}\\${newName}`;
-      
-      if (item.type === 'file') {
-        const content = await fs.readFile(item.path);
-        if (content) {
-          await fs.writeFile(newPath, content);
-        }
-      } else {
-        await fs.mkdir(newPath);
-        // Copy directory contents recursively
-        await copyDirectoryContents(item.path, newPath);
-      }
-      
-      // If it was a cut operation, delete the original
-      if (clipboard.value.type === 'cut') {
-        if (item.type === 'directory') {
-          await fs.rmdir(item.path, true);
-        } else {
-          await fs.rm(item.path);
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to ${clipboard.value.type} '${item.name}':`, error);
-    }
-  }
-  
-  // Clear clipboard after cut operation
-  if (clipboard.value.type === 'cut') {
-    clipboard.value = { type: null, items: [] };
-  }
-  
-  await loadDirectory(currentPath.value);
-}
 
-async function copyDirectoryContents(sourcePath: string, destPath: string) {
-  const children = await fs.readdir(sourcePath);
-  for (const child of children) {
-    const newChildPath = `${destPath}\\${child.name}`;
-    if (child.type === 'file') {
-      const content = await fs.readFile(child.path);
-      if (content) {
-        await fs.writeFile(newChildPath, content);
-      }
-    } else {
-      await fs.mkdir(newChildPath);
-      await copyDirectoryContents(child.path, newChildPath);
+  const isMove = clipboard.value.type === 'cut';
+  const selectedNodes = clipboard.value.items;
+  const paths = selectedNodes.map(node => node.path);
+
+  const result = await fileOps.copyItems(paths, currentPath.value, isMove);
+
+  if (result.success) {
+    const action = isMove ? 'moved' : 'copied';
+    showSuccess('Items Pasted', `Successfully ${action} ${selectedNodes.length} item(s)`);
+
+    // Clear clipboard after move operation
+    if (isMove) {
+      clipboard.value = { type: null, items: [] };
     }
+
+    await loadDirectory(currentPath.value);
+  } else {
+    showError('Failed to Paste Items', result.error || 'Unknown error occurred');
   }
 }
 
 async function renameItem() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length !== 1) return;
-  
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
   const node = selectedNodes[0];
   const newName = prompt("Enter new name:", node.name);
+
   if (newName && newName !== node.name) {
-    try {
-      const newPath = `${currentPath.value}\\${newName}`;
-      await fs.move(node.path, newPath);
+    const result = await fileOps.renameItem(node.path, newName.trim());
+
+    if (result.success) {
+      showSuccess('Item Renamed', `Successfully renamed '${node.name}' to '${newName}'`);
       await loadDirectory(currentPath.value);
-    } catch (error) {
-      console.error(`Failed to rename '${node.name}':`, error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Could not rename item.'}`);
+    } else {
+      showError('Failed to Rename Item', result.error || 'Unknown error occurred');
     }
   }
 }
 
 function showProperties() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 0) return;
-  
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
   const node = selectedNodes[0];
   const properties = `
 Properties for: ${node.name}
@@ -306,99 +262,98 @@ Modified: ${node.modifiedAt.toLocaleString()}
 Read-only: ${node.attributes.readOnly ? 'Yes' : 'No'}
 Hidden: ${node.attributes.hidden ? 'Yes' : 'No'}
   `;
-  
+
   alert(properties);
 }
 
-function selectAll() {
-  selectedItems.value.clear();
-  nodes.value.forEach(node => selectedItems.value.add(node.path));
-}
-
-// New Windows-like context menu functions
+// Context menu functions
 function openItem() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 1) {
-    const node = selectedNodes[0];
-    if (node.type === 'directory') {
-      loadDirectory(node.path);
-    } else {
-      // For files, show placeholder message
-      alert(`Opening file: ${node.name}\n(This is a placeholder - file opening not implemented)`);
-    }
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  const node = selectedNodes[0];
+
+  if (node.type === 'directory') {
+    loadDirectory(node.path);
+  } else {
+    showError('File Opening', `Opening file: ${node.name}\n(This is a placeholder - file opening not implemented)`);
   }
 }
 
 function editItem() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 1) {
-    const node = selectedNodes[0];
-    if (node.type === 'file') {
-      alert(`Editing file: ${node.name}\n(This is a placeholder - file editing not implemented)`);
-    } else {
-      alert('Cannot edit directories');
-    }
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  const node = selectedNodes[0];
+
+  if (node.type === 'file') {
+    showError('File Editing', `Editing file: ${node.name}\n(This is a placeholder - file editing not implemented)`);
+  } else {
+    showError('Edit Error', 'Cannot edit directories');
   }
 }
 
 function printItem() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 1) {
-    alert(`Printing: ${selectedNodes[0].name}\n(This is a placeholder - printing not implemented)`);
-  }
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  showError('Print', `Printing: ${selectedNodes[0].name}\n(This is a placeholder - printing not implemented)`);
 }
 
 function createShortcut() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 1) {
-    alert(`Creating shortcut for: ${selectedNodes[0].name}\n(This is a placeholder - shortcut creation not implemented)`);
-  }
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  showError('Create Shortcut', `Creating shortcut for: ${selectedNodes[0].name}\n(This is a placeholder - shortcut creation not implemented)`);
 }
 
 function openWith() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length === 1 && selectedNodes[0].type === 'file') {
-    alert(`Opening "${selectedNodes[0].name}" with...\n(This is a placeholder - open with not implemented)`);
+  if (!hasSingleSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  const node = selectedNodes[0];
+
+  if (node.type === 'file') {
+    showError('Open With', `Opening "${node.name}" with...\n(This is a placeholder - open with not implemented)`);
   }
 }
 
 function sendToDesktop() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length > 0) {
-    alert(`Sending ${selectedNodes.length} item(s) to Desktop\n(This is a placeholder - send to not implemented)`);
-  }
+  if (!hasSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  showError('Send to Desktop', `Sending ${selectedNodes.length} item(s) to Desktop\n(This is a placeholder - send to not implemented)`);
 }
 
 function sendToDocuments() {
-  const selectedNodes = getSelectedNodes();
-  if (selectedNodes.length > 0) {
-    alert(`Sending ${selectedNodes.length} item(s) to Documents\n(This is a placeholder - send to not implemented)`);
-  }
+  if (!hasSelection.value) return;
+
+  const selectedNodes = getSelectedNodes(nodes.value);
+  showError('Send to Documents', `Sending ${selectedNodes.length} item(s) to Documents\n(This is a placeholder - send to not implemented)`);
 }
 
 function refreshDirectory() {
   loadDirectory(currentPath.value);
 }
 
-function showViewOptions() {
-  // This will be handled by the submenu
-}
-
 function sortByName() {
-  // For now, just show placeholder - actual sorting would need more implementation
-  alert('Sorting by Name\n(This is a placeholder - sorting not fully implemented)');
+  setSortField('name');
+  showSuccess('Sort Applied', 'Sorted by name');
 }
 
 function sortByDate() {
-  alert('Sorting by Date Modified\n(This is a placeholder - sorting not fully implemented)');
+  setSortField('date');
+  showSuccess('Sort Applied', 'Sorted by date modified');
 }
 
 function sortByType() {
-  alert('Sorting by Type\n(This is a placeholder - sorting not fully implemented)');
+  setSortField('type');
+  showSuccess('Sort Applied', 'Sorted by type');
 }
 
 function sortBySize() {
-  alert('Sorting by Size\n(This is a placeholder - sorting not fully implemented)');
+  setSortField('size');
+  showSuccess('Sort Applied', 'Sorted by size');
 }
 
 const parentPath = computed(() => {
@@ -445,16 +400,7 @@ async function handleAddressChange() {
   }
 }
 
-const sortedNodes = computed(() => {
-  return [...nodes.value].sort((a, b) => {
-    // Directories first, then files
-    if (a.type !== b.type) {
-      return a.type === 'directory' ? -1 : 1;
-    }
-    // Then alphabetically
-    return a.name.localeCompare(b.name);
-  });
-});
+
 
 function formatDate(date: Date) {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -502,7 +448,7 @@ function getFileIconColor(node: FSNode) {
         class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm text-gray-800 flex items-center">
         <FolderPlusIcon :size="16" fillColor="#606060" class="mr-1" /> New Folder
       </button>
-      <button @click="deleteSelected" :disabled="selectedItems.size === 0"
+      <button @click="deleteSelected" :disabled="!hasSelection"
         class="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-800 flex items-center">
         <DeleteIcon :size="16" fillColor="#606060" class="mr-1" /> Delete
       </button>
@@ -549,7 +495,7 @@ function getFileIconColor(node: FSNode) {
     <!-- File List -->
     <div class="flex-1 overflow-auto bg-white" @contextmenu="showContextMenu($event)">
       <!-- Details View -->
-      <div v-if="viewMode === 'details' && sortedNodes.length > 0" class="w-full">
+      <div v-if="viewMode === 'details' && sortedNodes(nodes).length > 0" class="w-full">
         <table class="w-full text-sm">
           <thead class="bg-gray-100 sticky top-0">
             <tr class="border-b border-gray-300">
@@ -560,12 +506,12 @@ function getFileIconColor(node: FSNode) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="node in sortedNodes" :key="node.path"
-              @click="selectItem(node, $event)"
+            <tr v-for="node in sortedNodes(nodes)" :key="node.path"
+              @click="selectItem(node, sortedNodes(nodes), $event)"
               @dblclick="navigate(node)"
               @contextmenu.stop="showContextMenu($event, node)"
-              :class="['border-b border-gray-100 hover:bg-blue-50 cursor-pointer', 
-                selectedItems.has(node.path) ? 'bg-blue-100' : '']">
+              :class="['border-b border-gray-100 hover:bg-blue-50 cursor-pointer',
+                isSelected(node.path) ? 'bg-blue-100' : '']">
               <td class="p-2 flex items-center">
                 <component :is="getFileIcon(node)" :size="20" :fillColor="getFileIconColor(node)" class="mr-2" />
                 <span class="font-medium text-gray-900">{{ node.name }}</span>
@@ -585,14 +531,14 @@ function getFileIconColor(node: FSNode) {
       </div>
 
       <!-- List View -->
-      <div v-else-if="viewMode === 'list' && sortedNodes.length > 0" class="p-2">
+      <div v-else-if="viewMode === 'list' && sortedNodes(nodes).length > 0" class="p-2">
         <div class="grid grid-cols-1 gap-1">
-          <div v-for="node in sortedNodes" :key="node.path"
-            @click="selectItem(node, $event)"
+          <div v-for="node in sortedNodes(nodes)" :key="node.path"
+            @click="selectItem(node, sortedNodes(nodes), $event)"
             @dblclick="navigate(node)"
             @contextmenu.stop="showContextMenu($event, node)"
-            :class="['p-2 rounded hover:bg-blue-50 cursor-pointer flex items-center', 
-              selectedItems.has(node.path) ? 'bg-blue-100' : '']">
+            :class="['p-2 rounded hover:bg-blue-50 cursor-pointer flex items-center',
+              isSelected(node.path) ? 'bg-blue-100' : '']">
             <component :is="getFileIcon(node)" :size="20" :fillColor="getFileIconColor(node)" class="mr-2" />
             <span class="font-medium text-gray-900">{{ node.name }}</span>
           </div>
@@ -600,14 +546,14 @@ function getFileIconColor(node: FSNode) {
       </div>
 
       <!-- Icons View -->
-      <div v-else-if="viewMode === 'icons' && sortedNodes.length > 0" class="p-4">
+      <div v-else-if="viewMode === 'icons' && sortedNodes(nodes).length > 0" class="p-4">
         <div class="grid grid-cols-6 gap-4">
-          <div v-for="node in sortedNodes" :key="node.path"
-            @click="selectItem(node, $event)"
+          <div v-for="node in sortedNodes(nodes)" :key="node.path"
+            @click="selectItem(node, sortedNodes(nodes), $event)"
             @dblclick="navigate(node)"
             @contextmenu.stop="showContextMenu($event, node)"
-            :class="['p-3 rounded hover:bg-blue-50 cursor-pointer text-center', 
-              selectedItems.has(node.path) ? 'bg-blue-100' : '']">
+            :class="['p-3 rounded hover:bg-blue-50 cursor-pointer text-center',
+              isSelected(node.path) ? 'bg-blue-100' : '']">
             <div class="text-3xl mb-2">
               <component :is="getFileIcon(node)" :size="32" :fillColor="getFileIconColor(node)" />
             </div>
@@ -617,7 +563,7 @@ function getFileIconColor(node: FSNode) {
       </div>
 
       <!-- Empty State -->
-      <div v-if="sortedNodes.length === 0" class="flex items-center justify-center h-full text-gray-600">
+      <div v-if="sortedNodes(nodes).length === 0" class="flex items-center justify-center h-full text-gray-600">
         <div class="text-center flex flex-col items-center">
           <div class="mb-2 flex items-center justify-center">
             <FolderOpenIcon :size="48" fillColor="#FFCA28" />
@@ -629,9 +575,9 @@ function getFileIconColor(node: FSNode) {
 
     <!-- Status Bar -->
     <div class="bg-gray-100 border-t border-gray-300 p-2 text-sm text-gray-700">
-      <span>{{ selectedItems.size }} item(s) selected</span>
+      <span>{{ selectedCount }} item(s) selected</span>
       <span class="mx-2 text-gray-500">|</span>
-      <span>{{ sortedNodes.length }} item(s)</span>
+      <span>{{ sortedNodes(nodes).length }} item(s)</span>
     </div>
 
     <!-- Context Menu -->
@@ -646,7 +592,7 @@ function getFileIconColor(node: FSNode) {
       </button>
 
       <!-- Edit (only when single file is selected) -->
-      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="closeContextMenu(); editItem()"
+      <button v-if="hasSingleSelection && getSelectedNodes(nodes)[0]?.type === 'file'" @click="closeContextMenu(); editItem()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <PencilIcon :size="18" class="mr-2" /> Edit
       </button>
@@ -695,7 +641,7 @@ function getFileIconColor(node: FSNode) {
       <div v-if="hasSelection" class="border-t border-gray-200 my-1"></div>
 
       <!-- Print (only when single file is selected) -->
-      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="printItem(); closeContextMenu()"
+      <button v-if="hasSingleSelection && getSelectedNodes(nodes)[0]?.type === 'file'" @click="printItem(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <FileDocumentIcon :size="18" class="mr-2" /> Print
       </button>
@@ -797,14 +743,14 @@ function getFileIconColor(node: FSNode) {
       <div class="border-t border-gray-200 my-1"></div>
 
       <!-- Open with (only when single file is selected) -->
-      <button v-if="hasSingleSelection && getSelectedNodes()[0]?.type === 'file'" @click="openWith(); closeContextMenu()"
+      <button v-if="hasSingleSelection && getSelectedNodes(nodes)[0]?.type === 'file'" @click="openWith(); closeContextMenu()"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-800 flex items-center">
         <CloseIcon :size="18" class="mr-2" /> Open with
       </button>
 
       <!-- Select All (only when there are items to select) -->
-      <button @click="selectAll(); closeContextMenu()"
-        :disabled="sortedNodes.length === 0"
+      <button @click="selectAll(nodes); closeContextMenu()"
+        :disabled="sortedNodes(nodes).length === 0"
         class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 flex items-center">
         <CheckboxMarkedOutlineIcon :size="18" class="mr-2" /> Select All
       </button>
