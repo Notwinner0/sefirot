@@ -1,9 +1,11 @@
 import { ref, reactive, readonly } from 'vue';
 import { DESKTOP_CONFIG } from '../config/desktop';
+import { useDesktopPositioning } from './useDesktopPositioning';
 import type { FSNode, SelectionBox, DragState } from '../types/desktop';
 
 export function useDesktopDrag() {
   const { DRAG_THRESHOLD, PADDING, GRID_SIZE } = DESKTOP_CONFIG;
+  const { calculateGridPosition } = useDesktopPositioning();
 
   // State
   const isDragging = ref(false);
@@ -123,10 +125,9 @@ export function useDesktopDrag() {
     let newX = event.clientX - dragState.offset.x;
     let newY = event.clientY - dragState.offset.y;
 
-    if (isGridEnabled.value) {
-      newX = Math.round((newX - PADDING) / GRID_SIZE) * GRID_SIZE + PADDING;
-      newY = Math.round((newY - PADDING) / GRID_SIZE) * GRID_SIZE + PADDING;
-    }
+    const gridPosition = calculateGridPosition(newX, newY, isGridEnabled.value);
+    newX = gridPosition.x;
+    newY = gridPosition.y;
 
     let deltaX = newX - dragState.item.desktopX!;
     let deltaY = newY - dragState.item.desktopY!;

@@ -151,12 +151,18 @@ export function useDesktopPositioning() {
     });
   }
 
+  function calculateGridPosition(x: number, y: number, isGridEnabled: boolean): Position {
+    if (!isGridEnabled) return { x, y };
+    return snapToGrid(x, y, true);
+  }
+
   return {
     snapToGrid,
     assignDefaultPositions,
     findNextAvailablePosition,
     resolveStacking,
     constrainToViewport,
-    moveItems
+    moveItems,
+    calculateGridPosition
   };
 }

@@ -188,11 +188,14 @@ function handleMouseMove(event: MouseEvent) {
     }
   }
 
-  if (isMoving) {
+  // Optimize: Only call expensive operations when necessary
+  if (isMoving.value) {
     handleItemMovement(event, desktopItems.value, selectedItems.value, moveItems);
-  } else if (isDragging) {
+  } else if (isDragging.value) {
     const pathsToSelect = selectItemsInBox(selectedItems.value);
-    pathsToSelect.forEach(path => toggleSelection(path));
+    if (pathsToSelect.length > 0) {
+      pathsToSelect.forEach(path => toggleSelection(path));
+    }
   }
 }
 
