@@ -94,15 +94,83 @@ alpyaml/
 └── test/               # Test files
 ```
 
+## Development Workflow
+
+### Code Quality
+
+This project uses several tools to maintain high code quality:
+
+#### Linting
+```bash
+# Check for linting issues
+npm run lint
+
+# Fix linting issues automatically
+npm run lint:fix
+```
+
+#### Formatting
+```bash
+# Check code formatting
+npm run format:check
+
+# Format code automatically
+npm run format
+```
+
+#### TypeScript
+The project uses strict TypeScript settings for maximum type safety:
+- `strict: true` - Enables all strict type checking options
+- `exactOptionalPropertyTypes` - Ensures optional properties are handled correctly
+- `noImplicitOverride` - Prevents accidental method overrides
+- `noImplicitReturns` - Ensures all code paths return a value
+- `noUncheckedIndexedAccess` - Prevents unsafe array/object access
+
+#### Testing
+```bash
+# Run all tests
+npm run test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with UI
+npm run test:ui
+```
+
+**Coverage Thresholds:**
+- Branches: 70%
+- Functions: 70%
+- Lines: 70%
+- Statements: 70%
+
+#### Quality Gates
+```bash
+# Run all quality checks (lint + format + test coverage)
+npm run quality
+
+# Fix all auto-fixable issues
+npm run quality:fix
+```
+
 ## Scripts
 
 - `dev`: Start development server
 - `build`: Build for production
 - `preview`: Preview production build
+- `lint`: Check for linting issues
+- `lint:fix`: Fix linting issues automatically
+- `format`: Format code automatically
+- `format:check`: Check code formatting
 - `test`: Run tests
 - `test:ui`: Run tests with UI
 - `test:watch`: Run tests in watch mode
 - `test:coverage`: Run tests with coverage
+- `quality`: Run all quality checks
+- `quality:fix`: Fix all auto-fixable issues
 - `backend`: Start backend server
 
 ## Contributing
