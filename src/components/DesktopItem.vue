@@ -24,7 +24,7 @@
         class="absolute bottom-0 left-0 -mb-1 -ml-1 bg-blue-500 rounded-full p-0.5"
       />
     </div>
-    <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
+    <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:drop-shadow-none">
       {{ displayName }}
     </div>
   </div>

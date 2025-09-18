@@ -290,7 +290,7 @@ function handleContextMenuAction(action: string) {
       style="left: 16px; top: 16px;"
     >
       <FolderOpenIcon :size="iconSize === 'text-4xl' ? 48 : 32" fillColor="#FFCA28" class="mb-1" />
-      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:text-gray-500 hover:drop-shadow-none">
+      <div class="text-xs font-medium break-words leading-tight text-white drop-shadow-lg hover:drop-shadow-none">
         File Explorer
       </div>
     </div>
