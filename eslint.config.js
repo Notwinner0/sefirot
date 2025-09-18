@@ -3,32 +3,25 @@ import vue from 'eslint-plugin-vue';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import vueParser from 'vue-eslint-parser';
-import prettier from 'eslint-config-prettier';
 
 export default [
   // Base ESLint recommended rules
   js.configs.recommended,
 
   // Vue 3 configuration
-  ...vue.configs['flat/vue3-essential'],
-  ...vue.configs['flat/vue3-strongly-recommended'],
-  ...vue.configs['flat/vue3-recommended'],
-
-  // TypeScript configuration
   {
-    files: ['**/*.{ts,tsx,vue}'],
+    files: ['**/*.vue'],
     languageOptions: {
       parser: vueParser,
       parserOptions: {
         parser: typescriptParser,
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: './tsconfig.json',
         extraFileExtensions: ['.vue'],
       },
     },
     plugins: {
-      '@typescript-eslint': typescript,
+      vue,
     },
     rules: {
       // Vue specific rules
@@ -39,13 +32,26 @@ export default [
       'vue/no-unused-components': 'warn',
       'vue/component-definition-name-casing': ['error', 'PascalCase'],
       'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+    },
+  },
 
+  // TypeScript configuration
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: typescriptParser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    plugins: {
+      '@typescript-eslint': typescript,
+    },
+    rules: {
       // TypeScript specific rules
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/prefer-const': 'error',
       '@typescript-eslint/no-var-requires': 'error',
 
       // General rules
@@ -55,9 +61,6 @@ export default [
       'no-unused-vars': 'off', // Use TypeScript version instead
     },
   },
-
-  // Prettier integration
-  prettier,
 
   // Global settings
   {
@@ -70,10 +73,31 @@ export default [
         Buffer: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        Node: 'readonly',
+        Element: 'readonly',
+        Event: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly',
+        prompt: 'readonly',
       },
-    },
-    rules: {
-      // Add any global rules here
     },
   },
 
