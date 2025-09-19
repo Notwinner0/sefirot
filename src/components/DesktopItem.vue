@@ -44,8 +44,8 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'click', item: FSNode, event: MouseEvent): void
-  (e: 'dblclick', item: FSNode): void
+  (e: 'itemclick', item: FSNode, event: MouseEvent): void
+  (e: 'itemdblclick', item: FSNode): void
   (e: 'itemcontextmenu', item: FSNode, event: MouseEvent): void
 }
 
@@ -84,11 +84,11 @@ const displayName = computed(() => {
 const linkIcon = computed(() => LinkIcon)
 
 const handleClick = (event: MouseEvent) => {
-  emit('click', props.item, event)
+  emit('itemclick', props.item, event)
 }
 
 const handleDoubleClick = () => {
-  emit('dblclick', props.item)
+  emit('itemdblclick', props.item)
 }
 
 const handleContextMenu = (event: MouseEvent) => {

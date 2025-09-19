@@ -15,6 +15,9 @@ import { useDesktopFileOps } from "../composables/useDesktopFileOps";
 import { DESKTOP_CONFIG } from "../config/desktop";
 import type { FSNode } from "../types/desktop";
 
+// Import icons
+import { FolderOpenIcon } from '../icons';
+
 // Import new components
 import DesktopItem from './DesktopItem.vue'
 import SelectionBox from './SelectionBox.vue'
@@ -277,8 +280,8 @@ function handleContextMenuAction(action: string) {
       :icon-size="iconSize === 'text-4xl' ? 48 : 32"
       :is-selected="selectedItems.has(item.path)"
       :is-moving="isMoving"
-      @click="selectItem(item, $event)"
-      @dblclick="(item) => handleItemDoubleClick(item)"
+      @itemclick="(item, event) => selectItem(item, event)"
+      @itemdblclick="(item) => handleItemDoubleClick(item)"
       @itemcontextmenu="(item, event) => handleItemContextMenu(item, event)"
     />
     

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bunx --bun vite --open",
+    "dev": "concurrently \"bun --watch backend/index.ts\" \"bunx --bun vite --open\"",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.vue",
@@ -15,10 +15,10 @@
     "test:watch": "bun test --watch",
     "quality": "npm run lint && npm run format:check && npm run test",
     "quality:fix": "npm run lint:fix && npm run format",
-    "backend": "bun --watch backend/index.ts",
-    "prepare": "husky"
+    "backend": "bun --watch backend/index.ts"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.0",
     "elysia": "^1.4.4",
     "pinia": "^3.0.3",
     "vue": "^3.5.21",
@@ -33,6 +33,7 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/test-utils": "^2.4.6",
     "bun-types": "^1.2.22",
+    "concurrently": "^9.2.1",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.4.0",
